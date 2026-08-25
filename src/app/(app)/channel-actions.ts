@@ -21,10 +21,11 @@ export async function setActiveChannel(formData: FormData) {
     .eq("id", channelId)
     .eq("account_id", accountId)
     .maybeSingle();
-  if (!channel) redirect("/profile");
+  if (!channel) return;
 
   await admin.from("accounts").update({ active_channel_id: channelId }).eq("id", accountId);
 
+  // Revalidate rather than redirect, so switching keeps you on whatever page
+  // you were already looking at — just repointed at the newly active channel.
   revalidatePath("/", "layout");
-  redirect("/");
 }

@@ -3,7 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import Wordmark from "./Wordmark";
+import ChannelSwitcher from "./ChannelSwitcher";
+import type { Channel } from "@/lib/account";
 
 function DashboardIcon() {
   return (
@@ -45,38 +48,33 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings", Icon: SettingsIcon },
 ];
 
-export default function Sidebar({
-  email,
-  displayName,
-  avatarUrl,
-  activeChannelName,
-}: {
+type Props = {
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
-  activeChannelName: string;
-}) {
+  channels: Channel[];
+  activeChannelId: string;
+};
+
+function SidebarBody({
+  email,
+  displayName,
+  avatarUrl,
+  channels,
+  activeChannelId,
+  onNavigate,
+}: Props & { onNavigate?: () => void }) {
   const pathname = usePathname();
   const name = displayName || email;
 
   return (
-    <aside className="w-[248px] shrink-0 border-r border-[#efecec] flex flex-col justify-between py-[54px] px-10">
+    <>
       <div>
         <Wordmark size="md" />
 
-        <Link
-          href="/profile"
-          className="mt-7 block rounded-[12px] bg-[#f4f2ff] px-3 py-2.5 hover:bg-[#ebe7ff] transition-colors"
-          title="Switch channel in Profile"
-        >
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[#8e8f8f]">
-            <span className="size-1.5 rounded-full bg-[#55a55e]" />
-            Tracking
-          </div>
-          <div className="mt-0.5 truncate text-sm font-medium text-[#3629b7]">
-            {activeChannelName}
-          </div>
-        </Link>
+        <div className="mt-7">
+          <ChannelSwitcher channels={channels} activeChannelId={activeChannelId} />
+        </div>
 
         <nav className="mt-10">
           <div className="text-sm text-[#3629b7]">Menu</div>
@@ -87,6 +85,7 @@ export default function Sidebar({
                 <Link
                   key={href}
                   href={href}
+                  onClick={onNavigate}
                   className={`flex items-center gap-[18px] text-sm transition-colors ${
                     active ? "text-[#3629b7] font-medium" : "text-[#838383] hover:text-[#3629b7]"
                   }`}
@@ -100,25 +99,76 @@ export default function Sidebar({
         </nav>
       </div>
 
-      <Link href="/profile" className="flex items-center gap-2 group">
+      <Link
+        href="/profile"
+        onClick={onNavigate}
+        className="group flex items-center gap-2 rounded-[12px] p-2 -m-2 hover:bg-[#f7f4f4]"
+      >
         {avatarUrl ? (
           <Image
             src={avatarUrl}
             alt={name}
             width={36}
             height={36}
-            className="size-9 rounded-full object-cover shrink-0"
+            className="size-9 shrink-0 rounded-full object-cover"
           />
         ) : (
-          <div className="size-9 rounded-full bg-[#f4f2ff] flex items-center justify-center text-[#3629b7] text-sm font-medium shrink-0">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#f4f2ff] text-sm font-medium text-[#3629b7]">
             {name.charAt(0).toUpperCase()}
           </div>
         )}
         <div className="min-w-0">
-          <p className="text-sm text-[#494949] truncate group-hover:text-[#3629b7]">{name}</p>
+          <p className="truncate text-sm text-[#494949] group-hover:text-[#3629b7]">{name}</p>
           <p className="text-xs text-[#8e8f8f]">View profile</p>
         </div>
       </Link>
-    </aside>
+    </>
+  );
+}
+
+export default function Sidebar(props: Props) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <>
+      {/* Mobile: top bar */}
+      <div className="flex shrink-0 items-center justify-between border-b border-[#efecec] px-5 py-4 lg:hidden">
+        <Wordmark size="sm" />
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open menu"
+          className="rounded-[10px] p-2 text-[#494949] hover:bg-[#f7f4f4]"
+        >
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path
+              d="M3 6h16M3 11h16M3 16h16"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile: slide-in drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            aria-label="Close menu"
+            onClick={() => setMobileOpen(false)}
+            className="absolute inset-0 bg-black/25"
+          />
+          <aside className="absolute inset-y-0 left-0 flex w-[270px] max-w-[85vw] flex-col justify-between overflow-y-auto bg-white px-7 py-8 shadow-xl">
+            <SidebarBody {...props} onNavigate={() => setMobileOpen(false)} />
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop: fixed rail that never scrolls with the content */}
+      <aside className="hidden w-[248px] shrink-0 flex-col justify-between overflow-y-auto border-r border-[#efecec] px-10 py-[54px] lg:flex">
+        <SidebarBody {...props} />
+      </aside>
+    </>
   );
 }

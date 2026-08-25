@@ -74,7 +74,7 @@ export default async function StatsPage({
   );
 
   return (
-    <main className="w-full py-[58px] px-[68px]">
+    <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
       <h1 className="text-2xl text-[#3629b7] font-semibold">Stats</h1>
       <p className="mt-1 text-sm text-[#8e8f8f]">
         {activeChannel.name} — campaign performance, ranked by retention.
@@ -86,7 +86,7 @@ export default async function StatsPage({
         </p>
       )}
 
-      <div className="mt-8 rounded-[20px] border border-[#f2eeee] bg-white p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
+      <div className="mt-8 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
         <div className="text-base font-medium text-[#494949]">Spend efficiency</div>
         <p className="mt-0.5 text-xs text-[#8e8f8f]">
           Blended across campaigns that have an ad cost set.
@@ -110,7 +110,7 @@ export default async function StatsPage({
         </div>
       </div>
 
-      <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
+      <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -301,7 +301,7 @@ export default async function StatsPage({
         </div>
       </div>
 
-      <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
+      <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
         <div className="text-base font-medium text-[#494949]">New campaign</div>
         <form action={createCampaign} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
           <input type="hidden" name="channelId" value={activeChannel.id} />

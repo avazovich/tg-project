@@ -88,20 +88,19 @@ export default async function DashboardPage() {
   const activeCampaignCount = data.campaigns.filter((c) => c.status === "active").length;
 
   return (
-    <main className="w-full py-[58px] px-[68px]">
+    <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
       <p className="text-2xl text-[#3629b7]">
         Welcome back <span className="font-semibold">{firstName}</span>
       </p>
       <p className="mt-1 text-sm text-[#8e8f8f]">
-        Tracking <span className="text-[#494949] font-medium">{activeChannel.name}</span> —
-        which sources produce subscribers who stay, not just subscribers who join.
+        Which sources produce subscribers who stay, not just subscribers who join.
       </p>
 
       {data.loadError && (
         <p className="mt-6 text-sm text-red-500">Failed to load data: {data.loadError}</p>
       )}
 
-      <div className="mt-8 rounded-[20px] border border-[#f2eeee] bg-white p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
+      <div className="mt-8 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
         <div className="text-base font-medium text-[#494949]">{activeChannel.name}, right now</div>
         <p className="mt-0.5 text-xs text-[#8e8f8f]">
           Live totals from Telegram — includes members from before tracking started.
@@ -132,7 +131,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Active subscribers" value={String(data.totalActive)} tint="green" icon="dot" />
         <StatCard label="Joined (30d)" value={`+${data.newLast30}`} tint="purple" icon="up" />
         <StatCard label="Left (30d)" value={`-${data.leftLast30}`} tint="orange" icon="down" />
@@ -145,13 +144,13 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <div className="xl:col-span-2 rounded-[20px] border border-[#f2eeee] bg-white p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
+        <div className="xl:col-span-2 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
           <div className="text-base font-medium text-[#494949]">Growth — last 30 days</div>
           <div className="mt-2">
             <GrowthChart data={data.dailySeries} />
           </div>
         </div>
-        <div className="rounded-[20px] border border-[#f2eeee] bg-white p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)] flex flex-col items-center justify-center">
+        <div className="rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)] flex flex-col items-center justify-center">
           <div className="text-base font-medium text-[#494949] self-start">7-day retention</div>
           <div className="mt-4">
             <RetentionDonut pct={data.overallRetention7.pct} />
@@ -164,7 +163,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
+      <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
         <div className="flex items-baseline justify-between">
           <div>
             <div className="text-base font-medium text-[#494949]">Your campaign links</div>
