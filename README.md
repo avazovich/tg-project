@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Foydami
 
-## Getting Started
+Telegram campaign ROI tracker. Answers one question: **which acquisition sources
+produce subscribers who stay** — not just subscribers who join.
 
-First, run the development server:
+Each campaign gets its own generated Telegram invite link. When someone joins
+through that link, Telegram tells us which link they used, so the join is
+attributed to the campaign that earned it. From there the app computes retention
+(1/7/30/90 day), churn, CAC, and cost per retained subscriber.
+
+## Stack
+
+- Next.js 16 (App Router) + Tailwind
+- Supabase — Postgres, Auth, Storage, Edge Functions
+- Telegram Bot API
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # then fill in the values
+npm run dev                  # http://localhost:3200
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Apply the database schema to a linked Supabase project:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx supabase link --project-ref <your-project-ref>
+npx supabase db push
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Deploy the webhook and register it with Telegram:
 
-## Learn More
+```bash
+npx supabase secrets set TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=...
+npx supabase functions deploy telegram-webhook
 
-To learn more about Next.js, take a look at the following resources:
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d "url=https://<project-ref>.supabase.co/functions/v1/telegram-webhook" \
+  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>" \
+  -d 'allowed_updates=["chat_member","my_chat_member","message"]'
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How attribution works
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Telegram only includes an `invite_link` on a `chat_member` update when the user
+actually joined through that link. Someone who finds the channel via search or the
+public `t.me/<username>` link arrives with no link attached and is recorded as
+**organic**. That is correct behaviour, not a gap — to attribute a join, the
+campaign's generated link is the one that has to be shared.
 
-## Deploy on Vercel
+Tracking is also real-time only: the bot sees joins from the moment it becomes a
+channel admin onward. It cannot backfill a channel's history.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Connecting a channel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Telegram webhooks have no idea which signed-in web user is acting, so onboarding
+links the two identities:
+
+1. The app issues a one-time claim code.
+2. The user DMs the bot `/start <code>` — this reveals their Telegram user ID.
+3. The user adds the bot as a channel admin — the resulting `my_chat_member`
+   update carries that same user ID in its `from` field.
+
+Matching on identity rather than timing means many people can onboard at once
+without their channels being cross-linked.
+
+## Data model
+
+`member_events` is append-only and is the source of truth. Retention is always
+computed by querying that log, never by mutating a running total, so the numbers
+cannot silently drift. Duplicate webhook deliveries are deduped on
+`telegram_update_id`.
+
+Every table carries `account_id` and is protected by row-level security.
+
+An account tracks **one active channel at a time**; switching is an explicit
+action on the Profile page.
