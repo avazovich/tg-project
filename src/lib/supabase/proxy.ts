@@ -32,10 +32,7 @@ export async function updateSession(request: NextRequest) {
 
   const isPublicPath =
     request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/auth") ||
-    // Deployment diagnostics: must be reachable without a session, since the
-    // whole point is checking config when signing in is what's broken.
-    request.nextUrl.pathname === "/api/health";
+    request.nextUrl.pathname.startsWith("/auth");
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone();
