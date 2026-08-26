@@ -75,3 +75,83 @@ export function countCurrentlyActive(events: MemberEvent[]): number {
   }
   return active;
 }
+
+export type PlacementWindow = {
+  /** When the ad post went live. */
+  startsAt: Date;
+  topEndsAt: Date;
+  feedEndsAt: Date;
+};
+
+export type PlacementStats = {
+  window: PlacementWindow;
+  /** Joins while the post was still the channel's newest post. */
+  joinsInTop: number;
+  /** Joins after the top slot expired but while still in the feed. */
+  joinsInFeedOnly: number;
+  /** Everything inside the paid window (top + feed). */
+  joinsInWindow: number;
+  /** Joins that trickled in after the post was removed. */
+  joinsAfter: number;
+  /** Share of paid-window joins captured during the top slot. */
+  topSharePct: number | null;
+  /** Of those who joined during the paid window, how many are still here. */
+  retainedFromWindow: number;
+  windowEnded: boolean;
+};
+
+export function computePlacement(
+  events: MemberEvent[],
+  startsAt: Date,
+  topMinutes: number,
+  feedHours: number,
+  now: Date
+): PlacementStats {
+  const topEndsAt = new Date(startsAt.getTime() + topMinutes * 60_000);
+  const feedEndsAt = new Date(startsAt.getTime() + feedHours * 3_600_000);
+
+  const joins = events.filter((e) => e.event_type === "joined");
+
+  let joinsInTop = 0;
+  let joinsInFeedOnly = 0;
+  let joinsAfter = 0;
+  const windowJoiners = new Set<number>();
+
+  for (const e of joins) {
+    const t = new Date(e.event_timestamp);
+    if (t < startsAt) continue; // predates this placement entirely
+    if (t < topEndsAt) {
+      joinsInTop++;
+      windowJoiners.add(e.telegram_user_id);
+    } else if (t < feedEndsAt) {
+      joinsInFeedOnly++;
+      windowJoiners.add(e.telegram_user_id);
+    } else {
+      joinsAfter++;
+    }
+  }
+
+  // Still a member = their most recent event is a join.
+  const latestByUser = new Map<number, MemberEvent>();
+  for (const e of events) {
+    const cur = latestByUser.get(e.telegram_user_id);
+    if (!cur || e.event_timestamp > cur.event_timestamp) latestByUser.set(e.telegram_user_id, e);
+  }
+  let retainedFromWindow = 0;
+  for (const id of windowJoiners) {
+    if (latestByUser.get(id)?.event_type === "joined") retainedFromWindow++;
+  }
+
+  const joinsInWindow = joinsInTop + joinsInFeedOnly;
+
+  return {
+    window: { startsAt, topEndsAt, feedEndsAt },
+    joinsInTop,
+    joinsInFeedOnly,
+    joinsInWindow,
+    joinsAfter,
+    topSharePct: joinsInWindow > 0 ? (joinsInTop / joinsInWindow) * 100 : null,
+    retainedFromWindow,
+    windowEnded: now >= feedEndsAt,
+  };
+}

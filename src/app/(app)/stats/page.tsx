@@ -2,6 +2,8 @@ import { requireOnboardedAccount } from "@/lib/account";
 import { loadDashboardData, type QualityBand, type CampaignRow } from "@/lib/dashboard-data";
 import { createCampaign, setCampaignStatus, updateCampaign } from "@/app/campaigns/actions";
 import CopyLinkButton from "@/components/CopyLinkButton";
+import PlacementFields from "@/components/PlacementFields";
+import PlacementPerformance from "@/components/PlacementPerformance";
 
 export const dynamic = "force-dynamic";
 
@@ -185,6 +187,12 @@ export default async function StatsPage({
                             className={`${inputClass} w-32`}
                           />
                         </div>
+                        <PlacementFields
+                          idPrefix={c.id}
+                          promoStartsAt={c.promoStartsAt}
+                          topMinutes={c.topMinutes}
+                          feedHours={c.feedHours}
+                        />
                         <button
                           type="submit"
                           className="rounded-[12px] bg-[#3629b7] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2296]"
@@ -302,6 +310,14 @@ export default async function StatsPage({
       </div>
 
       <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
+        <div className="text-base font-medium text-[#494949]">Placement performance</div>
+        <p className="mt-0.5 text-xs text-[#8e8f8f]">
+          How joins landed across the paid window — was the top slot worth its premium?
+        </p>
+        <PlacementPerformance campaigns={data.campaigns} />
+      </div>
+
+      <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
         <div className="text-base font-medium text-[#494949]">New campaign</div>
         <form action={createCampaign} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
           <input type="hidden" name="channelId" value={activeChannel.id} />
@@ -336,6 +352,7 @@ export default async function StatsPage({
               className={`${inputClass} w-32`}
             />
           </div>
+          <PlacementFields idPrefix="new" />
           <button
             type="submit"
             className="rounded-[12px] bg-[#3629b7] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2296]"

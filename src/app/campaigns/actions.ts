@@ -8,6 +8,31 @@ import { createChatInviteLink } from "@/lib/telegram";
 
 const SOURCE_CATEGORIES = new Set(["paid_ad", "influencer", "organic", "cross_promo", "other"]);
 
+const TOP_MINUTES = new Set([15, 30, 60, 120, 180, 360, 720, 1440]);
+const FEED_HOURS = new Set([6, 12, 24, 48, 72, 168]);
+
+// A placement is only meaningful with all three parts; a partial one would
+// silently produce misleading window numbers, so treat it as "not set".
+function readPlacement(formData: FormData) {
+  const startRaw = String(formData.get("promoStartsAt") ?? "").trim();
+  const top = Number(formData.get("topMinutes"));
+  const feed = Number(formData.get("feedHours"));
+
+  if (!startRaw || !TOP_MINUTES.has(top) || !FEED_HOURS.has(feed)) {
+    return { promo_starts_at: null, top_minutes: null, feed_hours: null };
+  }
+  const start = new Date(startRaw);
+  if (Number.isNaN(start.getTime())) {
+    return { promo_starts_at: null, top_minutes: null, feed_hours: null };
+  }
+  return {
+    promo_starts_at: start.toISOString(),
+    top_minutes: top,
+    feed_hours: feed,
+  };
+}
+
+
 export async function createCampaign(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -45,6 +70,7 @@ export async function createCampaign(formData: FormData) {
     source_category: sourceCategory,
     budget,
     invite_link_url: inviteLink.invite_link,
+    ...readPlacement(formData),
   });
   if (insertError) throw insertError;
 
@@ -97,7 +123,7 @@ export async function updateCampaign(formData: FormData) {
     redirect("/stats?error=" + encodeURIComponent("Ad cost must be a positive number"));
   }
 
-  const updates: Record<string, unknown> = { name, budget };
+  const updates: Record<string, unknown> = { name, budget, ...readPlacement(formData) };
   if (SOURCE_CATEGORIES.has(sourceCategory)) updates.source_category = sourceCategory;
 
   const { error } = await admin

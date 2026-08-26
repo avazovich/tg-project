@@ -1,6 +1,12 @@
 import "server-only";
 import { createAdminClient } from "./supabase-admin";
-import { computeRetention, countCurrentlyActive, type MemberEvent } from "./retention";
+import {
+  computeRetention,
+  countCurrentlyActive,
+  computePlacement,
+  type MemberEvent,
+  type PlacementStats,
+} from "./retention";
 
 export type QualityBand = "high" | "medium" | "low" | "unknown";
 
@@ -14,6 +20,10 @@ export type CampaignRow = {
   status: string;
   budget: number | null;
   inviteLinkUrl: string | null;
+  promoStartsAt: string | null;
+  topMinutes: number | null;
+  feedHours: number | null;
+  placement: PlacementStats | null;
   joined: number;
   active: number;
   churned: number;
@@ -67,7 +77,9 @@ export async function loadDashboardData(channelId: string): Promise<DashboardDat
     await Promise.all([
       supabase
         .from("campaigns")
-        .select("id, name, source_category, status, budget, invite_link_url, channels(name)")
+        .select(
+          "id, name, source_category, status, budget, invite_link_url, promo_starts_at, top_minutes, feed_hours, channels(name)"
+        )
         .eq("channel_id", channelId)
         .order("created_at", { ascending: false }),
       supabase
@@ -147,6 +159,19 @@ export async function loadDashboardData(channelId: string): Promise<DashboardDat
       status: c.status,
       budget: c.budget,
       inviteLinkUrl: c.invite_link_url,
+      promoStartsAt: c.promo_starts_at,
+      topMinutes: c.top_minutes,
+      feedHours: c.feed_hours,
+      placement:
+        c.promo_starts_at && c.top_minutes && c.feed_hours
+          ? computePlacement(
+              campaignEvents,
+              new Date(c.promo_starts_at),
+              c.top_minutes,
+              c.feed_hours,
+              now
+            )
+          : null,
       joined,
       active,
       churned,

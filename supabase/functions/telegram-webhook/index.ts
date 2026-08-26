@@ -16,17 +16,129 @@ function isActiveMember(status: string | undefined, isMember: boolean | undefine
   return false;
 }
 
-async function sendMessage(chatId: number, text: string) {
+const APP_URL = Deno.env.get("APP_URL") ?? "https://foydami.vercel.app";
+
+async function sendMessage(
+  chatId: number,
+  text: string,
+  buttons?: { text: string; url: string }[],
+) {
   if (!BOT_TOKEN) return;
   try {
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text }),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+        ...(buttons?.length
+          ? { reply_markup: { inline_keyboard: buttons.map((b) => [b]) } }
+          : {}),
+      }),
     });
   } catch (err) {
     console.error("sendMessage failed", err);
   }
+}
+
+// The bot is the only surface some users will ever open, so it has to answer
+// for itself rather than going silent once a channel is connected.
+async function handleBotCommand(admin: any, message: any) {
+  const text = String(message.text ?? "").trim();
+  const command = text.split(/\s+/)[0].split("@")[0].toLowerCase();
+  const telegramUserId = message.from?.id;
+
+  if (command === "/help" || command === "/start") {
+    await sendMessage(
+      message.chat.id,
+      [
+        "<b>Foydami</b> tells you which ads bring subscribers who actually stay.",
+        "",
+        "<b>/stats</b> — how your channels are doing right now",
+        "<b>/links</b> — your campaign invite links",
+        "<b>/help</b> — this message",
+      ].join("\n"),
+      [{ text: "Open dashboard", url: APP_URL }],
+    );
+    return;
+  }
+
+  if (command !== "/stats" && command !== "/links") return;
+
+  // Map the Telegram user back to an account via the claim they completed.
+  const { data: claim } = await admin
+    .from("pending_channel_claims")
+    .select("account_id")
+    .eq("telegram_user_id", telegramUserId)
+    .not("claimed_channel_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!claim) {
+    await sendMessage(
+      message.chat.id,
+      "I don't have a channel linked to you yet. Connect one first and I'll start tracking.",
+      [{ text: "Connect a channel", url: `${APP_URL}/onboarding` }],
+    );
+    return;
+  }
+
+  const { data: channels } = await admin
+    .from("channels")
+    .select("id, name, bot_status")
+    .eq("account_id", claim.account_id);
+
+  if (!channels?.length) {
+    await sendMessage(message.chat.id, "No channels connected yet.", [
+      { text: "Connect a channel", url: `${APP_URL}/onboarding` },
+    ]);
+    return;
+  }
+
+  if (command === "/links") {
+    const { data: campaigns } = await admin
+      .from("campaigns")
+      .select("name, invite_link_url, status")
+      .eq("account_id", claim.account_id)
+      .eq("status", "active");
+
+    const lines = campaigns?.length
+      ? campaigns.map((c: any) => `• <b>${c.name}</b>\n${c.invite_link_url}`)
+      : ["No active campaigns yet."];
+    await sendMessage(
+      message.chat.id,
+      ["<b>Your campaign links</b>", "", ...lines].join("\n"),
+      [{ text: "Manage campaigns", url: `${APP_URL}/stats` }],
+    );
+    return;
+  }
+
+  // /stats — last 24h per channel, kept short enough to read on a phone.
+  const since = new Date(Date.now() - 86_400_000).toISOString();
+  const lines: string[] = ["<b>Last 24 hours</b>", ""];
+  for (const ch of channels) {
+    const { data: evs } = await admin
+      .from("member_events")
+      .select("event_type, campaign_id")
+      .eq("channel_id", ch.id)
+      .gte("event_timestamp", since);
+    const joined = evs?.filter((e: any) => e.event_type === "joined").length ?? 0;
+    const left = (evs?.length ?? 0) - joined;
+    const attributed =
+      evs?.filter((e: any) => e.event_type === "joined" && e.campaign_id).length ?? 0;
+    lines.push(
+      `<b>${ch.name}</b>`,
+      `+${joined} joined · −${left} left · net ${joined - left >= 0 ? "+" : ""}${joined - left}`,
+      `${attributed} from campaigns, ${joined - attributed} organic`,
+      "",
+    );
+  }
+  await sendMessage(message.chat.id, lines.join("\n"), [
+    { text: "Full dashboard", url: APP_URL },
+  ]);
 }
 
 // Only looks up existing channels — creation now happens exclusively via
@@ -84,7 +196,7 @@ async function handleMyChatMember(admin: any, myChatMember: any) {
   if (newStatus === "administrator" && actorId) {
     const { data: claim } = await admin
       .from("pending_channel_claims")
-      .select("id, account_id")
+      .select("id, account_id, telegram_user_id")
       .eq("telegram_user_id", actorId)
       .is("claimed_channel_id", null)
       .gt("expires_at", new Date().toISOString())
@@ -113,11 +225,37 @@ async function handleMyChatMember(admin: any, myChatMember: any) {
       .from("pending_channel_claims")
       .update({ claimed_channel_id: channel.id })
       .eq("id", claim.id);
+
+    // Without this the bot goes silent exactly when the user is most engaged.
+    if (claim.telegram_user_id) {
+      await sendMessage(
+        claim.telegram_user_id,
+        [
+          `✅ <b>${chat.title ?? "Your channel"}</b> is connected.`,
+          "",
+          "I'm now tracking every join and leave. Next: create a campaign so joins can be traced back to the ad that earned them.",
+          "",
+          "Send /stats any time for a 24-hour summary, or /links for your invite links.",
+        ].join("\n"),
+        [{ text: "Create a campaign", url: `${APP_URL}/stats` }],
+      );
+    }
     return;
   }
 
   if (newStatus === "left" || newStatus === "kicked") {
     await admin.from("channels").update({ bot_status: "removed" }).eq("telegram_chat_id", chat.id);
+    if (actorId) {
+      await sendMessage(
+        actorId,
+        [
+          `⚠️ I was removed as admin from <b>${chat.title ?? "your channel"}</b>.`,
+          "",
+          "Tracking has stopped — joins from now on won't be recorded, and that gap can't be backfilled later.",
+        ].join("\n"),
+        [{ text: "Reconnect", url: `${APP_URL}/onboarding` }],
+      );
+    }
   }
 }
 
@@ -135,8 +273,15 @@ export default {
     const update = await req.json();
 
     try {
-      if (update.message?.text?.startsWith("/start")) {
-        await handleStartCommand(ctx.supabaseAdmin, update.message);
+      const messageText = String(update.message?.text ?? "").trim();
+      if (messageText.startsWith("/")) {
+        // "/start <code>" is the channel-claim handshake; every other command
+        // (including a bare /start) is a normal bot interaction.
+        if (messageText.startsWith("/start ")) {
+          await handleStartCommand(ctx.supabaseAdmin, update.message);
+        } else {
+          await handleBotCommand(ctx.supabaseAdmin, update.message);
+        }
         return Response.json({ ok: true });
       }
 
