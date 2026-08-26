@@ -18,6 +18,7 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Foydami",
   description: "Which sources produce subscribers who stay.",
+  icons: { icon: "/mark.svg" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
