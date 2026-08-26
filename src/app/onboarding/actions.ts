@@ -27,5 +27,5 @@ export async function confirmChannel(formData: FormData) {
       .eq("account_id", account?.id);
   }
 
-  redirect("/");
+  redirect("/dashboard");
 }

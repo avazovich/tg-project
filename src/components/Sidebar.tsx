@@ -56,7 +56,7 @@ function AdminIcon() {
 }
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", Icon: DashboardIcon },
+  { href: "/dashboard", label: "Dashboard", Icon: DashboardIcon },
   { href: "/stats", label: "Stats", Icon: StatsIcon },
   { href: "/settings", label: "Settings", Icon: SettingsIcon },
 ];

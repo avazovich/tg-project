@@ -134,6 +134,6 @@ export async function updateCampaign(formData: FormData) {
   if (error) throw error;
 
   revalidatePath("/stats");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
   redirect("/stats");
 }

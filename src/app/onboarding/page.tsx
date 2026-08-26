@@ -57,7 +57,7 @@ export default async function OnboardingPage() {
                 <li key={ch.id}>{ch.name}</li>
               ))}
             </ul>
-            <Link href="/" className="mt-2 inline-block text-xs text-[#3629b7] hover:underline">
+            <Link href="/dashboard" className="mt-2 inline-block text-xs text-[#3629b7] hover:underline">
               ← Back to dashboard
             </Link>
           </div>

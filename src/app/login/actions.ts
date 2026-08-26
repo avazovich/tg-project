@@ -22,7 +22,7 @@ export async function signIn(formData: FormData) {
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
-  redirect("/");
+  redirect("/dashboard");
 }
 
 export async function signUp(formData: FormData) {

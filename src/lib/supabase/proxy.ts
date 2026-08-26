@@ -31,6 +31,8 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
 
   const isPublicPath =
+    // The marketing page is the front door — it must render for strangers.
+    request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/auth");
 
