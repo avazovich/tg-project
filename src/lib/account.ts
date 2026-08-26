@@ -57,7 +57,7 @@ export const requireOnboardedAccount = cache(async () => {
   const [{ data: account }, { data: channels }] = await Promise.all([
     admin
       .from("accounts")
-      .select("display_name, avatar_url, active_channel_id")
+      .select("display_name, avatar_url, active_channel_id, is_platform_admin")
       .eq("id", accountId)
       .single(),
     admin
@@ -83,5 +83,6 @@ export const requireOnboardedAccount = cache(async () => {
     activeChannel,
     displayName: account?.display_name ?? null,
     avatarUrl: account?.avatar_url ?? null,
+    isPlatformAdmin: Boolean(account?.is_platform_admin),
   };
 });

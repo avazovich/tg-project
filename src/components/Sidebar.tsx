@@ -42,6 +42,19 @@ function SettingsIcon() {
   );
 }
 
+function AdminIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path
+        d="M10 2.5l6 2.5v4.5c0 3.4-2.4 6.4-6 8-3.6-1.6-6-4.6-6-8V5l6-2.5z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", Icon: DashboardIcon },
   { href: "/stats", label: "Stats", Icon: StatsIcon },
@@ -54,6 +67,7 @@ type Props = {
   avatarUrl: string | null;
   channels: Channel[];
   activeChannelId: string;
+  isPlatformAdmin: boolean;
 };
 
 function SidebarBody({
@@ -62,10 +76,15 @@ function SidebarBody({
   avatarUrl,
   channels,
   activeChannelId,
+  isPlatformAdmin,
   onNavigate,
 }: Props & { onNavigate?: () => void }) {
   const pathname = usePathname();
   const name = displayName || email;
+  // Hiding the link is cosmetic; /admin enforces access server-side.
+  const navItems = isPlatformAdmin
+    ? [...NAV_ITEMS, { href: "/admin", label: "Admin", Icon: AdminIcon }]
+    : NAV_ITEMS;
 
   return (
     <>
@@ -79,7 +98,7 @@ function SidebarBody({
         <nav className="mt-10">
           <div className="text-sm text-[#3629b7]">Menu</div>
           <div className="mt-[30px] flex flex-col gap-[30px]">
-            {NAV_ITEMS.map(({ href, label, Icon }) => {
+            {navItems.map(({ href, label, Icon }) => {
               const active = pathname === href;
               return (
                 <Link

@@ -2,7 +2,7 @@ import { requireOnboardedAccount } from "@/lib/account";
 import Sidebar from "@/components/Sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, displayName, avatarUrl, channels, activeChannel } =
+  const { user, displayName, avatarUrl, channels, activeChannel, isPlatformAdmin } =
     await requireOnboardedAccount();
 
   return (
@@ -16,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           avatarUrl={avatarUrl}
           channels={channels}
           activeChannelId={activeChannel.id}
+          isPlatformAdmin={isPlatformAdmin}
         />
         <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>
       </div>
