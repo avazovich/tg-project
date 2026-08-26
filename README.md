@@ -41,6 +41,27 @@ curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -d 'allowed_updates=["chat_member","my_chat_member","message"]'
 ```
 
+## Verification
+
+Two layers, both runnable on demand rather than checked by eye.
+
+```bash
+npm test      # metric correctness, no network
+npm run verify  # drives the LIVE webhook end to end
+```
+
+`npm test` locks in the retention, churn and placement-window maths, including
+the cases that are easy to get quietly wrong: a rejoin counted as a fresh
+acquisition, a departure *after* a window still counting as retained for it,
+and an unmeasurable window reporting "no data" rather than 0%.
+
+`npm run verify` posts synthetic `chat_member` updates to the deployed Edge
+Function and asserts what actually reached the database — secret-token
+rejection, campaign attribution, retry deduplication, churn, and that a mere
+admin promotion creates no join. It uses Telegram IDs far outside the real
+range and deletes everything it created in a `finally` block, so a failed run
+still cleans up.
+
 ## How attribution works
 
 Telegram only includes an `invite_link` on a `chat_member` update when the user
