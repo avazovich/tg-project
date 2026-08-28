@@ -38,7 +38,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center px-6">
-      <div className="w-full max-w-md rounded-[24px] bg-white p-10 shadow-[0_40px_80px_0_rgba(28,31,46,0.12)]">
+      <div className="animate-pop-in w-full max-w-md rounded-[24px] bg-white p-10 shadow-[0_40px_80px_0_rgba(28,31,46,0.12)]">
         <div className="mb-4">
           <Wordmark size="md" />
         </div>

@@ -1,6 +1,6 @@
 import GrowthChart from "@/components/GrowthChart";
 import RetentionDonut from "@/components/RetentionDonut";
-import type { DailyPoint } from "@/lib/dashboard-data";
+import type { PeriodPoint } from "@/lib/dashboard-data";
 
 // Deterministic sample series — no randomness, so the server and client render
 // identically and the page looks the same on every visit.
@@ -9,10 +9,10 @@ const SHAPE = [
   11, 9, 8, 13, 24, 19, 14, 17,
 ];
 
-const sampleSeries: DailyPoint[] = SHAPE.map((joined, i) => {
+const sampleSeries: PeriodPoint[] = SHAPE.map((joined, i) => {
   const left = Math.max(1, Math.round(joined * (i % 5 === 0 ? 0.5 : 0.22)));
   const d = new Date(Date.UTC(2026, 6, 1 + i));
-  return { date: d.toISOString().slice(0, 10), joined, left, net: joined - left };
+  return { bucketStart: d.toISOString(), joined, left, net: joined - left };
 });
 
 const TINTS = {

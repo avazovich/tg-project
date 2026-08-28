@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePlatformAdmin, loadAdminData, type AdminAccountRow } from "@/lib/admin";
 import SignupsChart from "@/components/SignupsChart";
 
@@ -135,7 +136,8 @@ export default async function AdminPage() {
       <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)] md:p-6">
         <div className="text-base font-medium text-[#494949]">Accounts</div>
         <p className="mt-0.5 text-xs text-[#8e8f8f]">
-          Operational summary only — this never shows another account&apos;s subscriber data.
+          Click an account with a connected channel to see their dashboard — the same growth,
+          retention and campaign view they see themselves.
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-sm">
@@ -153,9 +155,10 @@ export default async function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {data.accounts.map((a) => (
-                <tr key={a.accountId} className="border-b border-[#f7f4f4]">
-                  <td className="py-3 pr-4">
+              {data.accounts.map((a) => {
+                const clickable = a.channelCount > 0;
+                const nameBlock = (
+                  <>
                     <div className="font-medium text-[#11263c]">
                       {a.displayName ?? a.email ?? "—"}
                       {a.isPlatformAdmin && (
@@ -166,6 +169,21 @@ export default async function AdminPage() {
                     </div>
                     {a.displayName && a.email && (
                       <div className="text-xs text-[#8e8f8f]">{a.email}</div>
+                    )}
+                  </>
+                );
+                return (
+                <tr
+                  key={a.accountId}
+                  className={`border-b border-[#f7f4f4] ${clickable ? "transition-colors hover:bg-[#faf9ff]" : ""}`}
+                >
+                  <td className="py-3 pr-4">
+                    {clickable ? (
+                      <Link href={`/admin/accounts/${a.accountId}`} className="block">
+                        {nameBlock}
+                      </Link>
+                    ) : (
+                      nameBlock
                     )}
                   </td>
                   <td className="whitespace-nowrap py-3 pr-4 text-[#8e8f8f]">
@@ -196,7 +214,8 @@ export default async function AdminPage() {
                     </span>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {data.accounts.length === 0 && (

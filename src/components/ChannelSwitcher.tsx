@@ -70,7 +70,7 @@ export default function ChannelSwitcher({
       {open && (
         <div
           role="listbox"
-          className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-[12px] border border-[#efecec] bg-white shadow-[0_16px_32px_0_rgba(28,31,46,0.14)]"
+          className="animate-pop-in absolute left-0 right-0 top-full z-30 mt-1 origin-top overflow-hidden rounded-[12px] border border-[#efecec] bg-white shadow-[0_16px_32px_0_rgba(28,31,46,0.14)]"
         >
           {channels.map((ch) => {
             const isActive = ch.id === activeChannelId;

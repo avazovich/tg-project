@@ -176,9 +176,9 @@ export default function Sidebar(props: Props) {
           <button
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
-            className="absolute inset-0 bg-black/25"
+            className="animate-fade-in absolute inset-0 bg-black/25"
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[270px] max-w-[85vw] flex-col justify-between overflow-y-auto bg-white px-7 py-8 shadow-xl">
+          <aside className="animate-slide-in-left absolute inset-y-0 left-0 flex w-[270px] max-w-[85vw] flex-col justify-between overflow-y-auto bg-white px-7 py-8 shadow-xl">
             <SidebarBody {...props} onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>

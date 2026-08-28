@@ -7,6 +7,7 @@ import {
   type MemberEvent,
   type PlacementStats,
 } from "./retention";
+import { buildPeriodSeries, type Period, type PeriodPoint } from "./period";
 
 export type QualityBand = "high" | "medium" | "low" | "unknown";
 
@@ -37,20 +38,17 @@ export type CampaignRow = {
   costPerRetained: number | null; // spend per subscriber still here
 };
 
-export type DailyPoint = {
-  date: string; // YYYY-MM-DD
-  joined: number;
-  left: number;
-  net: number;
-};
+export type { PeriodPoint };
 
 export type DashboardData = {
   totalActive: number;
-  newLast30: number;
-  leftLast30: number;
-  netLast30: number;
+  period: Period;
+  periodGranularity: "hour" | "day";
+  periodJoined: number;
+  periodLeft: number;
+  periodNet: number;
+  series: PeriodPoint[];
   overallRetention7: Retention;
-  dailySeries: DailyPoint[];
   campaigns: CampaignRow[];
   organicJoined: number;
   // Blended across every campaign that has a budget set.
@@ -69,7 +67,10 @@ function qualityBand(pct: number | null): QualityBand {
   return "low";
 }
 
-export async function loadDashboardData(channelId: string): Promise<DashboardData> {
+export async function loadDashboardData(
+  channelId: string,
+  period: Period = "7d"
+): Promise<DashboardData> {
   const supabase = createAdminClient();
   const now = new Date();
 
@@ -98,26 +99,7 @@ export async function loadDashboardData(channelId: string): Promise<DashboardDat
   const totalActive = countCurrentlyActive(allEvents);
   const overallRetention7 = computeRetention(allEvents, 7, now);
 
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
-  const last30 = (events ?? []).filter((e) => new Date(e.event_timestamp) >= thirtyDaysAgo);
-  const newLast30 = last30.filter((e) => e.event_type === "joined").length;
-  const leftLast30 = last30.filter((e) => e.event_type !== "joined").length;
-
-  const dailyMap = new Map<string, DailyPoint>();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 86_400_000);
-    const key = d.toISOString().slice(0, 10);
-    dailyMap.set(key, { date: key, joined: 0, left: 0, net: 0 });
-  }
-  for (const e of last30) {
-    const key = e.event_timestamp.slice(0, 10);
-    const point = dailyMap.get(key);
-    if (!point) continue;
-    if (e.event_type === "joined") point.joined++;
-    else point.left++;
-  }
-  for (const point of dailyMap.values()) point.net = point.joined - point.left;
-  const dailySeries = Array.from(dailyMap.values());
+  const periodSeries = buildPeriodSeries(allEvents, period, now);
 
   const eventsByCampaign = new Map<string, MemberEvent[]>();
   let organicJoined = 0;
@@ -193,11 +175,13 @@ export async function loadDashboardData(channelId: string): Promise<DashboardDat
 
   return {
     totalActive,
-    newLast30,
-    leftLast30,
-    netLast30: newLast30 - leftLast30,
+    period,
+    periodGranularity: periodSeries.granularity,
+    periodJoined: periodSeries.totalJoined,
+    periodLeft: periodSeries.totalLeft,
+    periodNet: periodSeries.totalJoined - periodSeries.totalLeft,
+    series: periodSeries.points,
     overallRetention7,
-    dailySeries,
     campaigns: campaignRows,
     organicJoined,
     totalSpend,

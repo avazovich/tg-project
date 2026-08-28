@@ -10,21 +10,36 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import type { DailyPoint } from "@/lib/dashboard-data";
+import type { PeriodPoint } from "@/lib/dashboard-data";
 
-function formatDay(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00Z");
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+function formatTick(iso: string, granularity: "hour" | "day") {
+  const d = new Date(iso);
+  return granularity === "hour"
+    ? d.toLocaleTimeString(undefined, { hour: "numeric" })
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function GrowthChart({ data }: { data: DailyPoint[] }) {
+function formatTooltipLabel(iso: string, granularity: "hour" | "day") {
+  const d = new Date(iso);
+  return granularity === "hour"
+    ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+export default function GrowthChart({
+  data,
+  granularity = "day",
+}: {
+  data: PeriodPoint[];
+  granularity?: "hour" | "day";
+}) {
   return (
     <ResponsiveContainer width="100%" height={240}>
       <ComposedChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#f2eeee" vertical={false} />
         <XAxis
-          dataKey="date"
-          tickFormatter={formatDay}
+          dataKey="bucketStart"
+          tickFormatter={(v) => formatTick(String(v), granularity)}
           stroke="#8e8f8f"
           fontSize={11}
           tickLine={false}
@@ -40,7 +55,7 @@ export default function GrowthChart({ data }: { data: DailyPoint[] }) {
           allowDecimals={false}
         />
         <Tooltip
-          labelFormatter={(v) => formatDay(String(v))}
+          labelFormatter={(v) => formatTooltipLabel(String(v), granularity)}
           contentStyle={{
             background: "#ffffff",
             border: "1px solid #f2eeee",
