@@ -1,4 +1,5 @@
 import type { CampaignRow } from "@/lib/dashboard-data";
+import { trackedLinkUrl } from "@/lib/click-tracking";
 import CopyLinkButton from "./CopyLinkButton";
 
 const STATUS_CLASS: Record<string, string> = {
@@ -31,21 +32,23 @@ export default function CampaignLinksTable({ campaigns }: { campaigns: CampaignR
           </tr>
         </thead>
         <tbody>
-          {campaigns.map((c) => (
+          {campaigns.map((c) => {
+            const displayUrl = c.clickSlug ? trackedLinkUrl(c.clickSlug) : c.inviteLinkUrl;
+            return (
             <tr key={c.id} className="border-b border-[#f7f4f4]">
               <td className="py-3 pr-4 font-medium text-[#11263c]">{c.name}</td>
               <td className="py-3 pr-4">
-                {c.inviteLinkUrl ? (
+                {displayUrl ? (
                   <div className="flex items-center gap-2">
                     <a
-                      href={c.inviteLinkUrl}
+                      href={displayUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#3629b7] hover:underline"
                     >
-                      {c.inviteLinkUrl.replace("https://", "")}
+                      {displayUrl.replace("https://", "")}
                     </a>
-                    <CopyLinkButton url={c.inviteLinkUrl} />
+                    <CopyLinkButton url={displayUrl} />
                   </div>
                 ) : (
                   <span className="text-[#8e8f8f]">—</span>
@@ -63,7 +66,8 @@ export default function CampaignLinksTable({ campaigns }: { campaigns: CampaignR
                 </span>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

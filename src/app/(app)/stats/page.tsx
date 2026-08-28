@@ -1,6 +1,7 @@
 import { requireOnboardedAccount } from "@/lib/account";
 import { loadDashboardData, type QualityBand, type CampaignRow } from "@/lib/dashboard-data";
 import { createCampaign, setCampaignStatus, updateCampaign } from "@/app/campaigns/actions";
+import { trackedLinkUrl } from "@/lib/click-tracking";
 import CopyLinkButton from "@/components/CopyLinkButton";
 import PlacementFields from "@/components/PlacementFields";
 import PlacementPerformance from "@/components/PlacementPerformance";
@@ -93,7 +94,7 @@ export default async function StatsPage({
         <p className="mt-0.5 text-xs text-[#8e8f8f]">
           Blended across campaigns that have an ad cost set.
         </p>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <SummaryTile label="Total ad spend" value={money(data.totalSpend || null)} />
           <SummaryTile
             label="CAC"
@@ -104,6 +105,11 @@ export default async function StatsPage({
             label="Cost per retained"
             value={money(data.blendedCostPerRetained)}
             hint="per subscriber still here"
+          />
+          <SummaryTile
+            label="Cost per click"
+            value={money(data.blendedCpc)}
+            hint={data.paidClicks > 0 ? `${data.paidClicks} tracked clicks` : "no tracked links yet"}
           />
           <SummaryTile
             label="Paid vs organic joins"
@@ -120,10 +126,13 @@ export default async function StatsPage({
                 <th className="py-2 pr-4 font-normal">Campaign</th>
                 <th className="py-2 pr-4 font-normal">Source</th>
                 <th className="py-2 pr-4 font-normal">Ad cost</th>
+                <th className="py-2 pr-4 font-normal">Clicks</th>
+                <th className="py-2 pr-4 font-normal">Click→Join</th>
                 <th className="py-2 pr-4 font-normal">Joined</th>
                 <th className="py-2 pr-4 font-normal">Active</th>
                 <th className="py-2 pr-4 font-normal">Churn</th>
                 <th className="py-2 pr-4 font-normal">CAC</th>
+                <th className="py-2 pr-4 font-normal">CPC</th>
                 <th className="py-2 pr-4 font-normal">Cost/ret.</th>
                 <th className="py-2 pr-4 font-normal">1d</th>
                 <th className="py-2 pr-4 font-normal">7d</th>
@@ -137,7 +146,7 @@ export default async function StatsPage({
               {ranked.map((c) =>
                 c.id === editId ? (
                   <tr key={c.id} className="border-b border-[#f7f4f4] bg-[#faf9ff]">
-                    <td colSpan={14} className="py-4 pr-4">
+                    <td colSpan={17} className="py-4 pr-4">
                       <form
                         action={updateCampaign}
                         className="flex flex-wrap items-end gap-3 text-sm"
@@ -193,6 +202,12 @@ export default async function StatsPage({
                           topMinutes={c.topMinutes}
                           feedHours={c.feedHours}
                         />
+                        {!c.clickSlug && (
+                          <label className="flex items-center gap-2 pb-2 text-xs text-[#8e8f8f]">
+                            <input type="checkbox" name="trackClicks" />
+                            Turn on click tracking
+                          </label>
+                        )}
                         <button
                           type="submit"
                           className="rounded-[12px] bg-[#3629b7] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2296]"
@@ -212,24 +227,35 @@ export default async function StatsPage({
                   <tr key={c.id} className="border-b border-[#f7f4f4]">
                     <td className="py-3 pr-4">
                       <div className="font-medium text-[#11263c]">{c.name}</div>
-                      {c.inviteLinkUrl && (
-                        <div className="mt-0.5 flex items-center gap-2">
-                          <a
-                            href={c.inviteLinkUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-[#3629b7] hover:underline"
-                          >
-                            {c.inviteLinkUrl.replace("https://", "")}
-                          </a>
-                          <CopyLinkButton url={c.inviteLinkUrl} />
-                        </div>
-                      )}
+                      {(() => {
+                        const displayUrl = c.clickSlug ? trackedLinkUrl(c.clickSlug) : c.inviteLinkUrl;
+                        return (
+                          displayUrl && (
+                            <div className="mt-0.5 flex items-center gap-2">
+                              <a
+                                href={displayUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-[#3629b7] hover:underline"
+                              >
+                                {displayUrl.replace("https://", "")}
+                              </a>
+                              <CopyLinkButton url={displayUrl} />
+                            </div>
+                          )
+                        );
+                      })()}
                     </td>
                     <td className="py-3 pr-4 text-[#8e8f8f] whitespace-nowrap">
                       {c.sourceCategory}
                     </td>
                     <td className="py-3 pr-4 text-[#494949]">{money(c.budget)}</td>
+                    <td className="py-3 pr-4 text-[#494949]">
+                      {c.clickSlug ? c.clicks : <span className="text-[#b7b7b7]">—</span>}
+                    </td>
+                    <td className="py-3 pr-4 text-[#494949]">
+                      {c.clickSlug ? pct(c.clickToJoinPct) : <span className="text-[#b7b7b7]">—</span>}
+                    </td>
                     <td className="py-3 pr-4 text-[#494949]">{c.joined}</td>
                     <td className="py-3 pr-4 text-[#494949]">{c.active}</td>
                     <td className="py-3 pr-4 text-[#494949] whitespace-nowrap">
@@ -237,6 +263,9 @@ export default async function StatsPage({
                       {c.churned > 0 && <span className="text-[#b7b7b7]"> ({c.churned})</span>}
                     </td>
                     <td className="py-3 pr-4 text-[#494949]">{money(c.cac)}</td>
+                    <td className="py-3 pr-4 text-[#494949]">
+                      {c.clickSlug ? money(c.costPerClick) : <span className="text-[#b7b7b7]">—</span>}
+                    </td>
                     <td className="py-3 pr-4 text-[#494949]">{money(c.costPerRetained)}</td>
                     <RetentionCell r={c.retention1} />
                     <RetentionCell r={c.retention7} />
@@ -353,6 +382,10 @@ export default async function StatsPage({
             />
           </div>
           <PlacementFields idPrefix="new" />
+          <label className="flex items-center gap-2 pb-2 text-xs text-[#8e8f8f]">
+            <input type="checkbox" name="trackClicks" />
+            Track clicks + subs on this link
+          </label>
           <button
             type="submit"
             className="rounded-[12px] bg-[#3629b7] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2296]"

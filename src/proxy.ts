@@ -7,6 +7,10 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // /l/* is the public click-redirect route: it needs to respond as fast
+    // as possible to real ad traffic (and volume from it), so it skips the
+    // auth proxy entirely rather than paying for a session check it never
+    // uses.
+    "/((?!_next/static|_next/image|favicon.ico|l/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

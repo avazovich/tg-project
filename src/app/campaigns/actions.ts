@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser, ensureAccount } from "@/lib/account";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createChatInviteLink, describeTelegramError } from "@/lib/telegram";
+import { generateClickSlug } from "@/lib/click-tracking";
 
 const SOURCE_CATEGORIES = new Set(["paid_ad", "influencer", "organic", "cross_promo", "other"]);
 
@@ -32,6 +33,22 @@ function readPlacement(formData: FormData) {
   };
 }
 
+
+// click_slug is globally unique across all campaigns, so a fresh random slug
+// can (rarely) collide with one already in use — retry a few times rather
+// than fail the whole campaign creation over it.
+async function uniqueClickSlug(admin: ReturnType<typeof createAdminClient>): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const slug = generateClickSlug();
+    const { data } = await admin
+      .from("campaigns")
+      .select("id")
+      .eq("click_slug", slug)
+      .maybeSingle();
+    if (!data) return slug;
+  }
+  throw new Error("Could not generate a unique click-tracking slug");
+}
 
 export async function createCampaign(formData: FormData) {
   const user = await getCurrentUser();
@@ -71,6 +88,9 @@ export async function createCampaign(formData: FormData) {
     redirect("/stats?error=" + encodeURIComponent(describeTelegramError(err)));
   }
 
+  const trackClicks = formData.get("trackClicks") === "on";
+  const clickSlug = trackClicks ? await uniqueClickSlug(admin) : null;
+
   const { error: insertError } = await admin.from("campaigns").insert({
     account_id: accountId,
     channel_id: channelId,
@@ -78,6 +98,7 @@ export async function createCampaign(formData: FormData) {
     source_category: sourceCategory,
     budget,
     invite_link_url: inviteLink.invite_link,
+    click_slug: clickSlug,
     ...readPlacement(formData),
   });
   if (insertError) throw insertError;
@@ -133,6 +154,21 @@ export async function updateCampaign(formData: FormData) {
 
   const updates: Record<string, unknown> = { name, budget, ...readPlacement(formData) };
   if (SOURCE_CATEGORIES.has(sourceCategory)) updates.source_category = sourceCategory;
+
+  // One-way: tracking can be turned on for a campaign that doesn't have it
+  // yet, but never turned off or regenerated — a link already handed out on
+  // an ad would silently break.
+  if (formData.get("trackClicks") === "on") {
+    const { data: existing } = await admin
+      .from("campaigns")
+      .select("click_slug")
+      .eq("id", campaignId)
+      .eq("account_id", accountId)
+      .single();
+    if (existing && !existing.click_slug) {
+      updates.click_slug = await uniqueClickSlug(admin);
+    }
+  }
 
   const { error } = await admin
     .from("campaigns")

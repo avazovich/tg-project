@@ -21,6 +21,13 @@ export type CampaignRow = {
   status: string;
   budget: number | null;
   inviteLinkUrl: string | null;
+  /** Set only when click tracking is on for this campaign. */
+  clickSlug: string | null;
+  clicks: number;
+  /** Share of clicks that went on to join — null with no clicks yet. */
+  clickToJoinPct: number | null;
+  /** Spend ÷ clicks — only meaningful with both a budget and tracked clicks. */
+  costPerClick: number | null;
   promoStartsAt: string | null;
   topMinutes: number | null;
   feedHours: number | null;
@@ -55,8 +62,10 @@ export type DashboardData = {
   totalSpend: number;
   paidJoined: number;
   paidActive: number;
+  paidClicks: number;
   blendedCac: number | null;
   blendedCostPerRetained: number | null;
+  blendedCpc: number | null;
   loadError: string | null;
 };
 
@@ -74,22 +83,37 @@ export async function loadDashboardData(
   const supabase = createAdminClient();
   const now = new Date();
 
-  const [{ data: campaigns, error: campaignsError }, { data: events, error: eventsError }] =
-    await Promise.all([
-      supabase
-        .from("campaigns")
-        .select(
-          "id, name, source_category, status, budget, invite_link_url, promo_starts_at, top_minutes, feed_hours, channels(name)"
-        )
-        .eq("channel_id", channelId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("member_events")
-        .select("campaign_id, telegram_user_id, event_type, event_timestamp")
-        .eq("channel_id", channelId),
-    ]);
+  const [
+    { data: campaigns, error: campaignsError },
+    { data: events, error: eventsError },
+    { data: clicks, error: clicksError },
+  ] = await Promise.all([
+    supabase
+      .from("campaigns")
+      .select(
+        "id, name, source_category, status, budget, invite_link_url, click_slug, promo_starts_at, top_minutes, feed_hours, channels(name)"
+      )
+      .eq("channel_id", channelId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("member_events")
+      .select("campaign_id, telegram_user_id, event_type, event_timestamp")
+      .eq("channel_id", channelId),
+    // Clicks live on their own table keyed by campaign_id, not channel_id —
+    // this filters through the campaigns relation to scope it to this channel.
+    supabase
+      .from("link_clicks")
+      .select("campaign_id, campaigns!inner(channel_id)")
+      .eq("campaigns.channel_id", channelId),
+  ]);
 
-  const loadError = campaignsError?.message ?? eventsError?.message ?? null;
+  const loadError =
+    campaignsError?.message ?? eventsError?.message ?? clicksError?.message ?? null;
+
+  const clicksByCampaign = new Map<string, number>();
+  for (const c of clicks ?? []) {
+    clicksByCampaign.set(c.campaign_id, (clicksByCampaign.get(c.campaign_id) ?? 0) + 1);
+  }
   const allEvents: MemberEvent[] = (events ?? []).map((e) => ({
     telegram_user_id: e.telegram_user_id,
     event_type: e.event_type as MemberEvent["event_type"],
@@ -132,6 +156,7 @@ export async function loadDashboardData(
     const channelName = Array.isArray(c.channels)
       ? c.channels[0]?.name ?? null
       : (c.channels as { name: string } | null)?.name ?? null;
+    const clickCount = clicksByCampaign.get(c.id) ?? 0;
 
     return {
       id: c.id,
@@ -141,6 +166,10 @@ export async function loadDashboardData(
       status: c.status,
       budget: c.budget,
       inviteLinkUrl: c.invite_link_url,
+      clickSlug: c.click_slug,
+      clicks: clickCount,
+      clickToJoinPct: clickCount > 0 ? (joined / clickCount) * 100 : null,
+      costPerClick: c.budget && clickCount > 0 ? c.budget / clickCount : null,
       promoStartsAt: c.promo_starts_at,
       topMinutes: c.top_minutes,
       feedHours: c.feed_hours,
@@ -172,6 +201,7 @@ export async function loadDashboardData(
   const totalSpend = budgeted.reduce((sum, c) => sum + (c.budget ?? 0), 0);
   const paidJoined = budgeted.reduce((sum, c) => sum + c.joined, 0);
   const paidActive = budgeted.reduce((sum, c) => sum + c.active, 0);
+  const paidClicks = budgeted.reduce((sum, c) => sum + c.clicks, 0);
 
   return {
     totalActive,
@@ -187,8 +217,10 @@ export async function loadDashboardData(
     totalSpend,
     paidJoined,
     paidActive,
+    paidClicks,
     blendedCac: paidJoined > 0 ? totalSpend / paidJoined : null,
     blendedCostPerRetained: paidActive > 0 ? totalSpend / paidActive : null,
+    blendedCpc: paidClicks > 0 ? totalSpend / paidClicks : null,
     loadError,
   };
 }
