@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, ensureAccount } from "@/lib/account";
 import { createAdminClient } from "@/lib/supabase-admin";
-import { createChatInviteLink } from "@/lib/telegram";
+import { createChatInviteLink, describeTelegramError } from "@/lib/telegram";
 
 const SOURCE_CATEGORIES = new Set(["paid_ad", "influencer", "organic", "cross_promo", "other"]);
 
@@ -61,7 +61,15 @@ export async function createCampaign(formData: FormData) {
     redirect("/stats?error=" + encodeURIComponent("Channel not found"));
   }
 
-  const inviteLink = await createChatInviteLink(channel!.telegram_chat_id, name);
+  // A Telegram-side failure here (most commonly: the bot is an admin but
+  // wasn't granted "Invite Users via Link") must never reach the caller as
+  // an unhandled exception — that's a blank page with no way forward.
+  let inviteLink: { invite_link: string };
+  try {
+    inviteLink = await createChatInviteLink(channel!.telegram_chat_id, name);
+  } catch (err) {
+    redirect("/stats?error=" + encodeURIComponent(describeTelegramError(err)));
+  }
 
   const { error: insertError } = await admin.from("campaigns").insert({
     account_id: accountId,

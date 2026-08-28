@@ -1,7 +1,25 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { requireOnboardedAccount } from "@/lib/account";
+import { canInviteUsers } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
+
+// Streamed separately (like the Dashboard's live member count) so a slow
+// Telegram round trip never blocks the rest of the page from painting.
+async function InvitePermissionCheck({ chatId }: { chatId: number }) {
+  const ok = await canInviteUsers(chatId);
+  if (ok !== false) return null; // true = fine, null = couldn't check, say nothing either way
+
+  return (
+    <div className="mt-3 rounded-[10px] border border-[#ffd9c4] bg-[#fff2ec] px-3 py-2.5 text-xs text-[#9b5a3d]">
+      <span className="font-medium text-[#ff4267]">Can&apos;t create invite links yet.</span> The
+      bot is an admin here, but wasn&apos;t given the &ldquo;Invite Users via Link&rdquo; right.
+      Open this channel&apos;s Administrators list in Telegram, edit the bot&apos;s permissions,
+      and turn that on — campaign creation will fail until it&apos;s enabled.
+    </div>
+  );
+}
 
 const BOT_STATUS_CLASS: Record<string, string> = {
   active: "bg-[#edffef] text-[#55a55e]",
@@ -86,6 +104,11 @@ export default async function SettingsPage() {
                   </dd>
                 </div>
               </dl>
+              {ch.bot_status === "active" && (
+                <Suspense fallback={null}>
+                  <InvitePermissionCheck chatId={ch.telegram_chat_id} />
+                </Suspense>
+              )}
             </div>
           ))}
         </div>

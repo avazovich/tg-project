@@ -1,18 +1,25 @@
 import "server-only";
 
+export { TelegramApiError, describeTelegramError } from "./telegram-errors";
+import { TelegramApiError } from "./telegram-errors";
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-export async function createChatInviteLink(chatId: number, name: string) {
-  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createChatInviteLink`, {
+async function callTelegram<T>(method: string, params: Record<string, unknown>): Promise<T> {
+  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, name }),
+    body: JSON.stringify(params),
   });
   const json = await res.json();
   if (!json.ok) {
-    throw new Error(`Telegram createChatInviteLink failed: ${JSON.stringify(json)}`);
+    throw new TelegramApiError(method, json.description ?? "unknown error");
   }
-  return json.result as { invite_link: string };
+  return json.result as T;
+}
+
+export async function createChatInviteLink(chatId: number, name: string) {
+  return callTelegram<{ invite_link: string }>("createChatInviteLink", { chat_id: chatId, name });
 }
 
 // Live count from Telegram, independent of our own event history — works
@@ -33,5 +40,22 @@ export async function getChatMemberCount(chatId: number): Promise<number | null>
     return json.result as number;
   } catch {
     return null;
+  }
+}
+
+// Whether the bot can actually generate invite links for this channel right
+// now. Checked proactively (Settings, onboarding) so the gap surfaces before
+// someone hits it mid-campaign-creation.
+export async function canInviteUsers(chatId: number): Promise<boolean | null> {
+  try {
+    const me = await callTelegram<{ id: number }>("getMe", {});
+    const member = await callTelegram<{ can_invite_users?: boolean; status: string }>(
+      "getChatMember",
+      { chat_id: chatId, user_id: me.id }
+    );
+    if (member.status === "creator") return true; // owners aren't restricted by this flag
+    return member.can_invite_users ?? false;
+  } catch {
+    return null; // unknown — don't claim a problem we couldn't actually check
   }
 }
