@@ -62,7 +62,7 @@ const NAV_ITEMS = [
 ];
 
 type Props = {
-  email: string;
+  identityLabel: string;
   displayName: string | null;
   avatarUrl: string | null;
   channels: Channel[];
@@ -71,7 +71,7 @@ type Props = {
 };
 
 function SidebarBody({
-  email,
+  identityLabel,
   displayName,
   avatarUrl,
   channels,
@@ -80,7 +80,7 @@ function SidebarBody({
   onNavigate,
 }: Props & { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const name = displayName || email;
+  const name = displayName || identityLabel;
   // Hiding the link is cosmetic; /admin enforces access server-side.
   const navItems = isPlatformAdmin
     ? [...NAV_ITEMS, { href: "/admin", label: "Admin", Icon: AdminIcon }]

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signIn, signUp } from "./actions";
 import Wordmark from "@/components/Wordmark";
 
@@ -25,7 +26,20 @@ export default async function LoginPage({
           </p>
         )}
 
-        <form className="mt-6 flex flex-col gap-3">
+        <Link
+          href="/login/telegram"
+          className="mt-6 flex items-center justify-center gap-2 rounded-[12px] bg-[#3629b7] px-3 py-2.5 text-sm font-medium text-white hover:bg-[#2d2296]"
+        >
+          Continue with Telegram
+        </Link>
+
+        <div className="mt-5 flex items-center gap-3 text-xs text-[#b7b7b7]">
+          <div className="h-px flex-1 bg-[#f2eeee]" />
+          or continue with email
+          <div className="h-px flex-1 bg-[#f2eeee]" />
+        </div>
+
+        <form className="mt-4 flex flex-col gap-3">
           <div>
             <label className="text-xs text-[#8e8f8f]" htmlFor="email">
               Email

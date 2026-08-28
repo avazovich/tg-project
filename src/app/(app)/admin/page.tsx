@@ -157,18 +157,19 @@ export default async function AdminPage() {
             <tbody>
               {data.accounts.map((a) => {
                 const clickable = a.channelCount > 0;
+                const identity = a.telegramUsername ? `@${a.telegramUsername}` : a.email;
                 const nameBlock = (
                   <>
                     <div className="font-medium text-[#11263c]">
-                      {a.displayName ?? a.email ?? "—"}
+                      {a.displayName ?? identity ?? "—"}
                       {a.isPlatformAdmin && (
                         <span className="ml-2 rounded-full bg-[#f4f2ff] px-2 py-0.5 text-[10px] font-medium text-[#3629b7]">
                           admin
                         </span>
                       )}
                     </div>
-                    {a.displayName && a.email && (
-                      <div className="text-xs text-[#8e8f8f]">{a.email}</div>
+                    {a.displayName && identity && (
+                      <div className="text-xs text-[#8e8f8f]">{identity}</div>
                     )}
                   </>
                 );

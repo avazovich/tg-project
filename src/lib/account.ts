@@ -57,7 +57,7 @@ export const requireOnboardedAccount = cache(async () => {
   const [{ data: account }, { data: channels }] = await Promise.all([
     admin
       .from("accounts")
-      .select("display_name, avatar_url, active_channel_id, is_platform_admin")
+      .select("display_name, avatar_url, active_channel_id, is_platform_admin, telegram_username")
       .eq("id", accountId)
       .single(),
     admin
@@ -76,6 +76,11 @@ export const requireOnboardedAccount = cache(async () => {
     await admin.from("accounts").update({ active_channel_id: activeChannel.id }).eq("id", accountId);
   }
 
+  // A Telegram-only account has no real email — fall back to their @username
+  // rather than showing the internal synthetic address anywhere in the UI.
+  const telegramUsername = account?.telegram_username ?? null;
+  const identityLabel = telegramUsername ? `@${telegramUsername}` : (user.email ?? "");
+
   return {
     user,
     accountId,
@@ -84,5 +89,7 @@ export const requireOnboardedAccount = cache(async () => {
     displayName: account?.display_name ?? null,
     avatarUrl: account?.avatar_url ?? null,
     isPlatformAdmin: Boolean(account?.is_platform_admin),
+    identityLabel,
+    telegramUsername,
   };
 });

@@ -24,7 +24,7 @@ export default async function AdminAccountPage({
   const [{ data: account }, { data: channels }] = await Promise.all([
     admin
       .from("accounts")
-      .select("id, display_name, active_channel_id, owner_user_id")
+      .select("id, display_name, active_channel_id, owner_user_id, telegram_username")
       .eq("id", accountId)
       .single(),
     admin
@@ -36,8 +36,10 @@ export default async function AdminAccountPage({
 
   if (!account || !channels || channels.length === 0) notFound();
 
-  let email: string | null = null;
-  if (account.owner_user_id) {
+  // Telegram-only accounts have a synthetic internal email — never surface
+  // it; show the Telegram username instead.
+  let email: string | null = account.telegram_username ? `@${account.telegram_username}` : null;
+  if (!email && account.owner_user_id) {
     const { data } = await admin.auth.admin.getUserById(account.owner_user_id);
     email = data.user?.email ?? null;
   }

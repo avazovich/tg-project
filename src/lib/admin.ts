@@ -7,6 +7,7 @@ import { createAdminClient } from "./supabase-admin";
 export type AdminAccountRow = {
   accountId: string;
   email: string | null;
+  telegramUsername: string | null;
   displayName: string | null;
   signedUpAt: string;
   lastSignInAt: string | null;
@@ -90,7 +91,10 @@ export async function loadAdminData(): Promise<AdminData> {
     const authUser = r.owner_user_id ? usersById.get(r.owner_user_id) : undefined;
     return {
       accountId: r.account_id,
-      email: authUser?.email ?? null,
+      // Telegram-only accounts have a synthetic internal email — never
+      // surface it; show the Telegram username instead.
+      email: r.telegram_username ? null : (authUser?.email ?? null),
+      telegramUsername: r.telegram_username ?? null,
       displayName: r.display_name,
       signedUpAt: r.created_at,
       lastSignInAt: authUser?.last_sign_in_at ?? null,

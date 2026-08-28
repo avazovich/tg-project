@@ -2,7 +2,7 @@ import { requireOnboardedAccount } from "@/lib/account";
 import Sidebar from "@/components/Sidebar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, displayName, avatarUrl, channels, activeChannel, isPlatformAdmin } =
+  const { displayName, avatarUrl, channels, activeChannel, isPlatformAdmin, identityLabel } =
     await requireOnboardedAccount();
 
   return (
@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           the content column scrolls. */}
       <div className="flex h-[100dvh] w-full max-w-[1440px] flex-col overflow-hidden bg-white text-[#494949] sm:h-[calc(100dvh-48px)] sm:rounded-[24px] sm:shadow-[0_40px_80px_0_rgba(28,31,46,0.12)] lg:flex-row">
         <Sidebar
-          email={user.email ?? ""}
+          identityLabel={identityLabel}
           displayName={displayName}
           avatarUrl={avatarUrl}
           channels={channels}

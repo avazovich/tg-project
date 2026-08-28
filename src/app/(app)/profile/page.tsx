@@ -10,9 +10,9 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const { user, displayName, avatarUrl } = await requireOnboardedAccount();
+  const { displayName, avatarUrl, identityLabel, telegramUsername } = await requireOnboardedAccount();
   const { error } = await searchParams;
-  const name = displayName || user.email || "";
+  const name = displayName || identityLabel;
 
   return (
     <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
@@ -48,7 +48,7 @@ export default async function ProfilePage({
               id="displayName"
               name="displayName"
               defaultValue={displayName ?? ""}
-              placeholder={user.email}
+              placeholder={identityLabel}
               className="mt-1 block w-full rounded-[12px] border border-[#e7e7e7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3629b7]"
             />
             <label className="mt-3 block text-xs text-[#8e8f8f]" htmlFor="avatar">
@@ -72,11 +72,15 @@ export default async function ProfilePage({
 
         <div className="mt-6 border-t border-[#f2eeee] pt-4 text-sm">
           <div className="flex flex-wrap justify-between gap-2 py-2">
-            <span className="text-[#8e8f8f]">Email</span>
-            <span className="font-medium text-[#11263c]">{user.email}</span>
+            <span className="text-[#8e8f8f]">Signed in with</span>
+            <span className="font-medium text-[#11263c]">
+              {telegramUsername ? `Telegram (${identityLabel})` : `Email (${identityLabel})`}
+            </span>
           </div>
           <p className="text-xs text-[#b7b7b7]">
-            Your email is tied to your login and can&apos;t be changed here.
+            {telegramUsername
+              ? "Your Telegram account is tied to your login and can't be changed here."
+              : "Your email is tied to your login and can't be changed here."}
           </p>
         </div>
       </div>

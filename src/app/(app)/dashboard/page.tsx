@@ -10,12 +10,15 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ period?: string }>;
 }) {
-  const { activeChannel, user } = await requireOnboardedAccount();
+  const { activeChannel, displayName, identityLabel } = await requireOnboardedAccount();
   const { period: periodParam } = await searchParams;
   const period = isPeriod(periodParam) ? periodParam : "7d";
 
   const data = await loadDashboardData(activeChannel.id, period);
-  const firstName = user.email?.split("@")[0] ?? "there";
+  const firstName =
+    displayName ||
+    (identityLabel.startsWith("@") ? identityLabel.slice(1) : identityLabel.split("@")[0]) ||
+    "there";
 
   return (
     <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">

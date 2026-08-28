@@ -18,6 +18,16 @@ function isActiveMember(status: string | undefined, isMember: boolean | undefine
 
 const APP_URL = Deno.env.get("APP_URL") ?? "https://foydami.vercel.app";
 
+// Mirrors src/lib/telegram-login-code.ts — duplicated rather than shared
+// since this edge function is a separate Deno deployment with its own
+// bundling, not part of the Next.js build.
+const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+function generateLoginCode(): string {
+  const part = () =>
+    Array.from({ length: 3 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join("");
+  return `${part()}-${part()}`;
+}
+
 async function sendMessage(
   chatId: number,
   text: string,
@@ -152,6 +162,40 @@ async function findChannel(admin: any, telegramChatId: number) {
   return data;
 }
 
+// Handles "/start login" DMs — the deep link behind the web app's "Continue
+// with Telegram" button. Issues a short pairing code the user types back
+// into the web app; the server action there turns it into a real session.
+// Unlike the channel-claim handshake below, this has no notion of an
+// existing account yet — it's the sign-up/sign-in step itself.
+async function handleLoginCommand(admin: any, message: any) {
+  const telegramUserId = message.from?.id;
+  if (!telegramUserId) return;
+  const telegramUsername: string | null = message.from?.username ?? null;
+
+  const code = generateLoginCode();
+  const { error } = await admin.from("telegram_login_codes").insert({
+    code,
+    telegram_user_id: telegramUserId,
+    telegram_username: telegramUsername,
+  });
+  if (error) {
+    await sendMessage(message.chat.id, "Something went wrong generating your code — try again.");
+    return;
+  }
+
+  await sendMessage(
+    message.chat.id,
+    [
+      `Welcome, ${telegramUsername ? "@" + telegramUsername : message.from.first_name} 👋`,
+      "",
+      "Your sign-in code:",
+      `<b>${code}</b>`,
+      "",
+      "Enter it on the Foydami sign-in page to continue. It expires in 10 minutes.",
+    ].join("\n"),
+  );
+}
+
 // Handles "/start <claim_code>" DMs: links a claim to the Telegram user who
 // sent it, so we can later match that same user performing the "add bot as
 // admin" action on a channel.
@@ -275,9 +319,16 @@ export default {
     try {
       const messageText = String(update.message?.text ?? "").trim();
       if (messageText.startsWith("/")) {
-        // "/start <code>" is the channel-claim handshake; every other command
-        // (including a bare /start) is a normal bot interaction.
-        if (messageText.startsWith("/start ")) {
+        const parts = messageText.split(/\s+/);
+        const command = parts[0].split("@")[0].toLowerCase();
+        const param = parts[1];
+
+        // "/start login" is the sign-in deep link; "/start <claim_code>" is
+        // the channel-claim handshake; everything else (including a bare
+        // /start) is a normal bot interaction.
+        if (command === "/start" && param === "login") {
+          await handleLoginCommand(ctx.supabaseAdmin, update.message);
+        } else if (command === "/start" && param) {
           await handleStartCommand(ctx.supabaseAdmin, update.message);
         } else {
           await handleBotCommand(ctx.supabaseAdmin, update.message);
