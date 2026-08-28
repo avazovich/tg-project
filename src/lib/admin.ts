@@ -81,6 +81,22 @@ export async function loadAdminData(): Promise<AdminData> {
     admin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
   ]);
 
+  // TEMP DIAGNOSTIC (2026-08-28): the deployed admin page is showing "—" /
+  // "never" for every account despite the underlying data being correct —
+  // narrowing down whether auth.admin.listUsers() is actually succeeding in
+  // this environment. Logs server-side only; no secret or user PII beyond
+  // counts. Remove once diagnosed.
+  console.error("[admin-diag] listUsers error:", authUsers.error?.message ?? null);
+  console.error("[admin-diag] listUsers count:", authUsers.data?.users?.length ?? "n/a");
+  console.error(
+    "[admin-diag] listUsers sample ids:",
+    (authUsers.data?.users ?? []).slice(0, 3).map((u) => u.id)
+  );
+  console.error(
+    "[admin-diag] overview owner_user_ids:",
+    (overview ?? []).map((r) => r.owner_user_id)
+  );
+
   const usersById = new Map(
     (authUsers.data?.users ?? []).map((u) => [u.id, u])
   );
