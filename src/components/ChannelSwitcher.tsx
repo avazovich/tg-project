@@ -7,9 +7,15 @@ import type { Channel } from "@/lib/account";
 export default function ChannelSwitcher({
   channels,
   activeChannelId,
+  tracking,
+  onlyOneChannel,
+  connectAnother,
 }: {
   channels: Channel[];
   activeChannelId: string;
+  tracking: string;
+  onlyOneChannel: string;
+  connectAnother: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -44,7 +50,7 @@ export default function ChannelSwitcher({
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-[#8e8f8f]">
             <span className="size-1.5 rounded-full bg-[#55a55e]" />
-            Tracking
+            {tracking}
           </span>
           <span className="mt-0.5 block truncate text-sm font-medium text-[#3629b7]">
             {active.name}
@@ -112,14 +118,14 @@ export default function ChannelSwitcher({
 
           {!hasOthers && (
             <p className="border-t border-[#f2eeee] px-3 py-2 text-xs text-[#8e8f8f]">
-              Only one channel connected.
+              {onlyOneChannel}
             </p>
           )}
           <a
             href="/onboarding"
             className="block border-t border-[#f2eeee] px-3 py-2.5 text-xs text-[#3629b7] hover:bg-[#f7f4f4]"
           >
-            + Connect another channel
+            {connectAnother}
           </a>
         </div>
       )}

@@ -2,6 +2,8 @@ import { requireOnboardedAccount } from "@/lib/account";
 import { loadDashboardData } from "@/lib/dashboard-data";
 import { isPeriod } from "@/lib/period";
 import DashboardBody from "@/components/dashboard/DashboardBody";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -13,21 +15,21 @@ export default async function DashboardPage({
   const { activeChannel, displayName, identityLabel } = await requireOnboardedAccount();
   const { period: periodParam } = await searchParams;
   const period = isPeriod(periodParam) ? periodParam : "7d";
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
 
   const data = await loadDashboardData(activeChannel.id, period);
   const firstName =
     displayName ||
     (identityLabel.startsWith("@") ? identityLabel.slice(1) : identityLabel.split("@")[0]) ||
-    "there";
+    dict.dashboard.guestFallback;
 
   return (
     <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
       <p className="text-2xl text-[#3629b7]">
-        Welcome back <span className="font-semibold">{firstName}</span>
+        {dict.dashboard.welcomeBack} <span className="font-semibold">{firstName}</span>
       </p>
-      <p className="mt-1 text-sm text-[#8e8f8f]">
-        Which sources produce subscribers who stay, not just subscribers who join.
-      </p>
+      <p className="mt-1 text-sm text-[#8e8f8f]">{dict.dashboard.subtitle}</p>
 
       <DashboardBody
         channel={activeChannel}
@@ -35,12 +37,11 @@ export default async function DashboardPage({
         period={period}
         periodSelectorBasePath="/dashboard"
         statsHref="/stats"
+        dict={dict}
+        locale={locale}
       />
 
-      <p className="mt-6 text-xs text-[#b7b7b7]">
-        Working with another channel? Switch which one is active from Profile. Content
-        correlation, alerts, and agency views come in later phases, per the build order.
-      </p>
+      <p className="mt-6 text-xs text-[#b7b7b7]">{dict.dashboard.switchChannelNote}</p>
     </main>
   );
 }

@@ -3,6 +3,8 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 export async function getCurrentUser() {
   const supabase = await createServerClient();
@@ -26,9 +28,15 @@ export async function ensureAccount(userId: string, email?: string): Promise<str
   if (lookupError) throw lookupError;
   if (existing) return existing.id as string;
 
+  let fallbackName = email;
+  if (!fallbackName) {
+    const dict = await getDictionary(await getLocale());
+    fallbackName = dict.common.myAccountFallback;
+  }
+
   const { data: created, error: insertError } = await admin
     .from("accounts")
-    .insert({ name: email ?? "My Account", owner_user_id: userId })
+    .insert({ name: fallbackName, owner_user_id: userId })
     .select("id")
     .single();
   if (insertError) throw insertError;

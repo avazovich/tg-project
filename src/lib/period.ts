@@ -3,12 +3,8 @@ import type { MemberEvent } from "./retention";
 export const PERIODS = ["today", "yesterday", "7d", "30d"] as const;
 export type Period = (typeof PERIODS)[number];
 
-export const PERIOD_LABEL: Record<Period, string> = {
-  today: "Today",
-  yesterday: "Yesterday",
-  "7d": "Last 7 days",
-  "30d": "Last 30 days",
-};
+// Display labels live in the i18n dictionary (dict.periods) — this is pure
+// data/logic and stays locale-agnostic.
 
 export function isPeriod(v: string | undefined | null): v is Period {
   return !!v && (PERIODS as readonly string[]).includes(v);

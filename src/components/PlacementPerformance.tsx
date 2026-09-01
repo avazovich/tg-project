@@ -1,4 +1,17 @@
 import type { CampaignRow } from "@/lib/dashboard-data";
+import { t as interpolate } from "@/i18n/interpolate";
+
+type PlacementPerformanceText = {
+  empty: string;
+  running: string;
+  topSlotFirst: string;
+  restOfFeed: string;
+  afterWindow: string;
+  joinsInPaidWindow: string;
+  capturedInTopSlot: string;
+  stillSubscribed: string;
+  costPerWindowJoin: string;
+};
 
 function fmtDuration(minutes: number) {
   if (minutes < 60) return `${minutes}m`;
@@ -6,8 +19,8 @@ function fmtDuration(minutes: number) {
   return Number.isInteger(h) ? `${h}h` : `${h.toFixed(1)}h`;
 }
 
-function fmtWhen(d: Date) {
-  return d.toLocaleString(undefined, {
+function fmtWhen(d: Date, intlLocale: string) {
+  return d.toLocaleString(intlLocale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -40,16 +53,19 @@ function Segment({
 // Answers the question a buyer actually has about a "1/24" style placement:
 // did the premium top slot earn its price, or did the joins arrive later from
 // the feed regardless?
-export default function PlacementPerformance({ campaigns }: { campaigns: CampaignRow[] }) {
+export default function PlacementPerformance({
+  campaigns,
+  t,
+  intlLocale,
+}: {
+  campaigns: CampaignRow[];
+  t: PlacementPerformanceText;
+  intlLocale: string;
+}) {
   const withPlacement = campaigns.filter((c) => c.placement);
 
   if (withPlacement.length === 0) {
-    return (
-      <p className="mt-4 text-sm text-[#8e8f8f]">
-        No campaigns have a placement window set yet. Add one when creating or editing a campaign
-        to see how a &ldquo;1 hour top / 24 hour feed&rdquo; buy actually performed.
-      </p>
-    );
+    return <p className="mt-4 text-sm text-[#8e8f8f]">{t.empty}</p>;
   }
 
   return (
@@ -72,30 +88,30 @@ export default function PlacementPerformance({ campaigns }: { campaigns: Campaig
                 </span>
                 {!p.windowEnded && (
                   <span className="ml-1.5 rounded-full bg-[#edffef] px-2 py-0.5 text-xs font-medium text-[#55a55e]">
-                    running
+                    {t.running}
                   </span>
                 )}
               </div>
               <div className="text-xs text-[#8e8f8f]">
-                {fmtWhen(p.window.startsAt)} → {fmtWhen(p.window.feedEndsAt)}
+                {fmtWhen(p.window.startsAt, intlLocale)} → {fmtWhen(p.window.feedEndsAt, intlLocale)}
               </div>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-5">
               <Segment
-                label={`Top slot (first ${fmtDuration(c.topMinutes!)})`}
+                label={interpolate(t.topSlotFirst, { duration: fmtDuration(c.topMinutes!) })}
                 value={p.joinsInTop}
                 share={pctOf(p.joinsInTop)}
                 color="#3629b7"
               />
               <Segment
-                label="Rest of feed window"
+                label={t.restOfFeed}
                 value={p.joinsInFeedOnly}
                 share={pctOf(p.joinsInFeedOnly)}
                 color="#8b7fe8"
               />
               <Segment
-                label="After window closed"
+                label={t.afterWindow}
                 value={p.joinsAfter}
                 share={pctOf(p.joinsAfter)}
                 color="#c9c4e8"
@@ -104,17 +120,17 @@ export default function PlacementPerformance({ campaigns }: { campaigns: Campaig
 
             <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-[#eae6e6] pt-3 text-xs">
               <div className="flex gap-1.5">
-                <dt className="text-[#8e8f8f]">Joins in paid window</dt>
+                <dt className="text-[#8e8f8f]">{t.joinsInPaidWindow}</dt>
                 <dd className="font-medium text-[#494949]">{p.joinsInWindow}</dd>
               </div>
               <div className="flex gap-1.5">
-                <dt className="text-[#8e8f8f]">Captured in top slot</dt>
+                <dt className="text-[#8e8f8f]">{t.capturedInTopSlot}</dt>
                 <dd className="font-medium text-[#494949]">
                   {p.topSharePct === null ? "—" : `${p.topSharePct.toFixed(0)}%`}
                 </dd>
               </div>
               <div className="flex gap-1.5">
-                <dt className="text-[#8e8f8f]">Still subscribed</dt>
+                <dt className="text-[#8e8f8f]">{t.stillSubscribed}</dt>
                 <dd className="font-medium text-[#494949]">
                   {p.retainedFromWindow}
                   {p.joinsInWindow > 0 && (
@@ -125,11 +141,11 @@ export default function PlacementPerformance({ campaigns }: { campaigns: Campaig
                 </dd>
               </div>
               <div className="flex gap-1.5">
-                <dt className="text-[#8e8f8f]">Cost per window join</dt>
+                <dt className="text-[#8e8f8f]">{t.costPerWindowJoin}</dt>
                 <dd className="font-medium text-[#494949]">
                   {cacInWindow === null
                     ? "—"
-                    : cacInWindow.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    : cacInWindow.toLocaleString(intlLocale, { maximumFractionDigits: 2 })}
                 </dd>
               </div>
             </dl>

@@ -8,15 +8,33 @@ const STATUS_CLASS: Record<string, string> = {
   archived: "bg-[#f2eeee] text-[#8e8f8f]",
 };
 
+type CampaignLinksTableText = {
+  campaign: string;
+  inviteLink: string;
+  joined: string;
+  active: string;
+  status: string;
+  noLinksYet: string;
+};
+
+type StatusText = { active: string; paused: string; archived: string };
+type CopyText = { copy: string; copied: string };
+
 // Compact read-only view of every campaign link — shown on the Dashboard so
 // the links are grabbable without a detour through Stats.
-export default function CampaignLinksTable({ campaigns }: { campaigns: CampaignRow[] }) {
+export default function CampaignLinksTable({
+  campaigns,
+  t,
+  statusText,
+  copyText,
+}: {
+  campaigns: CampaignRow[];
+  t: CampaignLinksTableText;
+  statusText: StatusText;
+  copyText: CopyText;
+}) {
   if (campaigns.length === 0) {
-    return (
-      <p className="mt-4 text-sm text-[#8e8f8f]">
-        No campaign links yet — create one on the Stats page to start attributing joins.
-      </p>
-    );
+    return <p className="mt-4 text-sm text-[#8e8f8f]">{t.noLinksYet}</p>;
   }
 
   return (
@@ -24,11 +42,11 @@ export default function CampaignLinksTable({ campaigns }: { campaigns: CampaignR
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="text-left text-xs text-[#8e8f8f] border-b border-[#f2eeee]">
-            <th className="py-2 pr-4 font-normal">Campaign</th>
-            <th className="py-2 pr-4 font-normal">Invite link</th>
-            <th className="py-2 pr-4 font-normal">Joined</th>
-            <th className="py-2 pr-4 font-normal">Active</th>
-            <th className="py-2 pr-4 font-normal">Status</th>
+            <th className="py-2 pr-4 font-normal">{t.campaign}</th>
+            <th className="py-2 pr-4 font-normal">{t.inviteLink}</th>
+            <th className="py-2 pr-4 font-normal">{t.joined}</th>
+            <th className="py-2 pr-4 font-normal">{t.active}</th>
+            <th className="py-2 pr-4 font-normal">{t.status}</th>
           </tr>
         </thead>
         <tbody>
@@ -48,7 +66,7 @@ export default function CampaignLinksTable({ campaigns }: { campaigns: CampaignR
                     >
                       {displayUrl.replace("https://", "")}
                     </a>
-                    <CopyLinkButton url={displayUrl} />
+                    <CopyLinkButton url={displayUrl} copyLabel={copyText.copy} copiedLabel={copyText.copied} />
                   </div>
                 ) : (
                   <span className="text-[#8e8f8f]">—</span>
@@ -62,7 +80,7 @@ export default function CampaignLinksTable({ campaigns }: { campaigns: CampaignR
                     STATUS_CLASS[c.status] ?? "bg-[#f2eeee] text-[#8e8f8f]"
                   }`}
                 >
-                  {c.status}
+                  {statusText[c.status as keyof StatusText] ?? c.status}
                 </span>
               </td>
             </tr>

@@ -12,26 +12,28 @@ import {
 } from "recharts";
 import type { PeriodPoint } from "@/lib/dashboard-data";
 
-function formatTick(iso: string, granularity: "hour" | "day") {
+function formatTick(iso: string, granularity: "hour" | "day", intlLocale: string) {
   const d = new Date(iso);
   return granularity === "hour"
-    ? d.toLocaleTimeString(undefined, { hour: "numeric" })
-    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    ? d.toLocaleTimeString(intlLocale, { hour: "numeric" })
+    : d.toLocaleDateString(intlLocale, { month: "short", day: "numeric" });
 }
 
-function formatTooltipLabel(iso: string, granularity: "hour" | "day") {
+function formatTooltipLabel(iso: string, granularity: "hour" | "day", intlLocale: string) {
   const d = new Date(iso);
   return granularity === "hour"
-    ? d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-    : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    ? d.toLocaleTimeString(intlLocale, { hour: "numeric", minute: "2-digit" })
+    : d.toLocaleDateString(intlLocale, { weekday: "short", month: "short", day: "numeric" });
 }
 
 export default function GrowthChart({
   data,
   granularity = "day",
+  intlLocale = "en-US",
 }: {
   data: PeriodPoint[];
   granularity?: "hour" | "day";
+  intlLocale?: string;
 }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
@@ -39,7 +41,7 @@ export default function GrowthChart({
         <CartesianGrid strokeDasharray="3 3" stroke="#f2eeee" vertical={false} />
         <XAxis
           dataKey="bucketStart"
-          tickFormatter={(v) => formatTick(String(v), granularity)}
+          tickFormatter={(v) => formatTick(String(v), granularity, intlLocale)}
           stroke="#8e8f8f"
           fontSize={11}
           tickLine={false}
@@ -55,7 +57,7 @@ export default function GrowthChart({
           allowDecimals={false}
         />
         <Tooltip
-          labelFormatter={(v) => formatTooltipLabel(String(v), granularity)}
+          labelFormatter={(v) => formatTooltipLabel(String(v), granularity, intlLocale)}
           contentStyle={{
             background: "#ffffff",
             border: "1px solid #f2eeee",

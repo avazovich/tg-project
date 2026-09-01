@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PERIODS, PERIOD_LABEL, type Period } from "@/lib/period";
+import { PERIODS, type Period } from "@/lib/period";
 
 /**
  * Plain query-param links rather than client-side state, so this works
@@ -11,10 +11,12 @@ export default function PeriodSelector({
   active,
   basePath,
   extraParams = "",
+  labels,
 }: {
   active: Period;
   basePath: string;
   extraParams?: string;
+  labels: Record<Period, string>;
 }) {
   return (
     <div className="inline-flex rounded-[12px] bg-[#f7f4f4] p-1">
@@ -31,7 +33,7 @@ export default function PeriodSelector({
                 : "text-[#8e8f8f] hover:text-[#3629b7]"
             }`}
           >
-            {PERIOD_LABEL[p]}
+            {labels[p]}
           </Link>
         );
       })}

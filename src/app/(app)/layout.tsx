@@ -1,9 +1,13 @@
 import { requireOnboardedAccount } from "@/lib/account";
 import Sidebar from "@/components/Sidebar";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { displayName, avatarUrl, channels, activeChannel, isPlatformAdmin, identityLabel } =
     await requireOnboardedAccount();
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
 
   return (
     <div className="flex flex-1 items-stretch justify-center p-0 sm:p-6">
@@ -17,6 +21,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           channels={channels}
           activeChannelId={activeChannel.id}
           isPlatformAdmin={isPlatformAdmin}
+          t={dict.sidebar}
+          languageLabel={dict.languageSwitcher.label}
+          locale={locale}
         />
         <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>
       </div>

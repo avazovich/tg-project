@@ -42,8 +42,21 @@ function MiniStat({
   );
 }
 
+type PreviewText = {
+  welcomeBack: string;
+  sampleName: string;
+  activeSubscribers: string;
+  joined30: string;
+  left30: string;
+  netGrowth30: string;
+  growthLast30: string;
+  sevenDayRetention: string;
+  joinsRetained: string;
+  urlBar: string;
+};
+
 /** A framed, live rendering of the real dashboard — same components, sample data. */
-export default function ProductPreview() {
+export default function ProductPreview({ t, intlLocale }: { t: PreviewText; intlLocale: string }) {
   return (
     <div className="overflow-hidden rounded-[20px] border border-[#e7e3e3] bg-white shadow-[0_30px_70px_0_rgba(28,31,46,0.16)]">
       {/* window chrome */}
@@ -52,7 +65,7 @@ export default function ProductPreview() {
         <span className="size-2.5 rounded-full bg-[#febc2e]" />
         <span className="size-2.5 rounded-full bg-[#28c840]" />
         <span className="ml-3 truncate rounded-md bg-white px-2 py-0.5 text-[10px] text-[#b7b7b7]">
-          foydami.app/dashboard
+          {t.urlBar}
         </span>
       </div>
 
@@ -71,33 +84,33 @@ export default function ProductPreview() {
 
         <div className="min-w-0 flex-1 p-4 sm:p-5">
           <div className="text-xs text-[#3629b7] sm:text-sm">
-            Welcome back <span className="font-semibold">islam</span>
+            {t.welcomeBack} <span className="font-semibold">{t.sampleName}</span>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-            <MiniStat label="Active subscribers" value="12,480" tint="green" />
-            <MiniStat label="Joined (30d)" value="+438" tint="purple" />
-            <MiniStat label="Left (30d)" value="−112" tint="orange" />
-            <MiniStat label="Net growth (30d)" value="+326" tint="blue" />
+            <MiniStat label={t.activeSubscribers} value="12,480" tint="green" />
+            <MiniStat label={t.joined30} value="+438" tint="purple" />
+            <MiniStat label={t.left30} value="−112" tint="orange" />
+            <MiniStat label={t.netGrowth30} value="+326" tint="blue" />
           </div>
 
           <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
             <div className="rounded-[12px] border border-[#f2eeee] p-3 lg:col-span-2">
               <div className="text-[11px] font-medium text-[#494949] sm:text-xs">
-                Growth — last 30 days
+                {t.growthLast30}
               </div>
               <div className="mt-1">
-                <GrowthChart data={sampleSeries} />
+                <GrowthChart data={sampleSeries} intlLocale={intlLocale} />
               </div>
             </div>
             <div className="flex flex-col items-center justify-center rounded-[12px] border border-[#f2eeee] p-3">
               <div className="self-start text-[11px] font-medium text-[#494949] sm:text-xs">
-                7-day retention
+                {t.sevenDayRetention}
               </div>
               <div className="mt-2">
                 <RetentionDonut pct={74} />
               </div>
-              <div className="mt-1 text-[10px] text-[#8e8f8f]">324 of 438 joins retained</div>
+              <div className="mt-1 text-[10px] text-[#8e8f8f]">{t.joinsRetained}</div>
             </div>
           </div>
         </div>

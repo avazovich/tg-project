@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase-admin";
 import { isLikelyLinkPreviewBot } from "@/lib/click-tracking";
+import { resolveLocale } from "@/i18n/config";
+import { getDictionary } from "@/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,12 @@ export async function GET(
     .maybeSingle();
 
   if (!campaign?.invite_link_url) {
-    return new Response("This link is no longer valid.", { status: 404 });
+    // No auth proxy runs on this path (see proxy.ts), so there's no locale
+    // cookie to read — this is ad traffic, not app browsing. Fall back
+    // directly to the browser's own language list instead.
+    const locale = resolveLocale(request.headers.get("accept-language"));
+    const dict = await getDictionary(locale);
+    return new Response(dict.errors.linkInvalid, { status: 404 });
   }
 
   const userAgent = request.headers.get("user-agent");

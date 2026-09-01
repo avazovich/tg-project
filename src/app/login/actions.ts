@@ -5,6 +5,8 @@ import { headers } from "next/headers";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { normalizeLoginCode } from "@/lib/telegram-login-code";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 // Derived per-request rather than configured, so confirmation links work on
 // localhost, preview deploys and production without extra setup.
@@ -15,6 +17,16 @@ async function origin() {
   return `${proto}://${host}`;
 }
 
+// Supabase's own error strings are always English (GoTrue doesn't localize
+// per our cookie). Map the one a user hits routinely to a translated
+// message; anything less common falls back to Supabase's raw wording rather
+// than showing nothing.
+async function describeAuthError(message: string): Promise<string> {
+  const dict = await getDictionary(await getLocale());
+  if (/invalid login credentials/i.test(message)) return dict.errors.auth.invalidCredentials;
+  return message;
+}
+
 export async function signIn(formData: FormData) {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
@@ -22,7 +34,7 @@ export async function signIn(formData: FormData) {
   const supabase = await createServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(`/login?error=${encodeURIComponent(await describeAuthError(error.message))}`);
   }
   redirect("/dashboard");
 }
@@ -40,13 +52,10 @@ export async function signUp(formData: FormData) {
     options: { emailRedirectTo: `${await origin()}/auth/callback?next=/onboarding` },
   });
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(`/login?error=${encodeURIComponent(await describeAuthError(error.message))}`);
   }
-  redirect(
-    `/login?message=${encodeURIComponent(
-      "Check your email — click the confirmation link and you'll be signed straight in."
-    )}`
-  );
+  const dict = await getDictionary(await getLocale());
+  redirect(`/login?message=${encodeURIComponent(dict.signUpConfirmation)}`);
 }
 
 export async function signOut() {
@@ -62,15 +71,16 @@ function telegramSyntheticEmail(telegramUserId: number): string {
   return `tg-${telegramUserId}@telegram.foydami.internal`;
 }
 
-const CODE_ERROR = "That code is invalid or has expired. Send /start login to the bot again.";
-const GENERIC_ERROR = "Something went wrong signing you in. Please try again.";
-
 // Redeems the pairing code the bot sent, then signs the user in exactly the
 // way an email confirmation does — an admin-generated magic link handed to
 // the existing /auth/callback route — so every other auth path (RLS,
 // getCurrentUser, requireOnboardedAccount) stays untouched by this being a
 // second sign-in method.
 export async function verifyTelegramCode(formData: FormData) {
+  const dict = await getDictionary(await getLocale());
+  const CODE_ERROR = dict.errors.telegramLogin.invalidCode;
+  const GENERIC_ERROR = dict.errors.telegramLogin.generic;
+
   const code = normalizeLoginCode(String(formData.get("code") ?? ""));
   if (!code) {
     redirect(`/login/telegram?error=${encodeURIComponent(CODE_ERROR)}`);
@@ -122,7 +132,7 @@ export async function verifyTelegramCode(formData: FormData) {
     userId = created.user.id;
 
     const { error: insertErr } = await admin.from("accounts").insert({
-      name: pending.telegram_username ? `@${pending.telegram_username}` : "My Account",
+      name: pending.telegram_username ? `@${pending.telegram_username}` : dict.common.myAccountFallback,
       owner_user_id: userId,
       telegram_user_id: pending.telegram_user_id,
       telegram_username: pending.telegram_username,

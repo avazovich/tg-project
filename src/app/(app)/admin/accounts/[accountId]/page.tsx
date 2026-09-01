@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import { loadDashboardData } from "@/lib/dashboard-data";
 import { isPeriod } from "@/lib/period";
 import DashboardBody from "@/components/dashboard/DashboardBody";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,8 @@ export default async function AdminAccountPage({
   const { accountId } = await params;
   const { period: periodParam, channel: channelParam } = await searchParams;
   const period = isPeriod(periodParam) ? periodParam : "7d";
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
 
   const admin = createAdminClient();
   const [{ data: account }, { data: channels }] = await Promise.all([
@@ -50,20 +54,22 @@ export default async function AdminAccountPage({
   const data = await loadDashboardData(activeChannel.id, period);
   const extraParams = `&channel=${activeChannel.id}`;
 
+  const a = dict.admin.accountPage;
+
   return (
     <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
       <Link href="/admin" className="text-xs text-[#3629b7] hover:underline">
-        ← Admin
+        {a.backLink}
       </Link>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <p className="text-2xl text-[#3629b7]">
-              {account.display_name ?? email ?? "Account"}
+              {account.display_name ?? email ?? a.accountFallback}
             </p>
             <span className="rounded-full bg-[#f4f2ff] px-2 py-0.5 text-[10px] font-medium text-[#3629b7]">
-              viewing as admin
+              {a.viewingAsAdmin}
             </span>
           </div>
           {email && <p className="mt-0.5 text-sm text-[#8e8f8f]">{email}</p>}
@@ -94,6 +100,8 @@ export default async function AdminAccountPage({
         period={period}
         periodSelectorBasePath={`/admin/accounts/${accountId}`}
         periodSelectorExtraParams={extraParams}
+        dict={dict}
+        locale={locale}
       />
     </main>
   );

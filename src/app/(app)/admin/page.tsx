@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { requirePlatformAdmin, loadAdminData, type AdminAccountRow } from "@/lib/admin";
 import SignupsChart from "@/components/SignupsChart";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
+import { INTL_LOCALE } from "@/i18n/config";
+import { t as interpolate } from "@/i18n/interpolate";
+import type { Dictionary } from "@/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
-
-const STAGE_LABEL: Record<AdminAccountRow["stage"], string> = {
-  signed_up: "Signed up",
-  connected: "Connected channel",
-  campaigning: "Running campaigns",
-  attributing: "Getting attributed joins",
-};
 
 const STAGE_CLASS: Record<AdminAccountRow["stage"], string> = {
   signed_up: "bg-[#f2eeee] text-[#8e8f8f]",
@@ -28,16 +26,16 @@ function Tile({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-function relative(iso: string | null) {
-  if (!iso) return "never";
+function relative(iso: string | null, t: Dictionary["admin"]["relativeTime"]) {
+  if (!iso) return t.never;
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t.justNow;
+  if (mins < 60) return interpolate(t.minutesAgo, { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return interpolate(t.hoursAgo, { n: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return interpolate(t.daysAgo, { n: days });
 }
 
 function FunnelBar({
@@ -72,61 +70,58 @@ export default async function AdminPage() {
   await requirePlatformAdmin();
   const data = await loadAdminData();
   const { funnel, totals } = data;
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
+  const a = dict.admin;
+  const STAGE_LABEL = a.stage;
 
   return (
     <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
-      <h1 className="text-2xl font-semibold text-[#3629b7]">Admin</h1>
-      <p className="mt-1 text-sm text-[#8e8f8f]">
-        Platform-wide usage across every account on Foydami.
-      </p>
+      <h1 className="text-2xl font-semibold text-[#3629b7]">{a.title}</h1>
+      <p className="mt-1 text-sm text-[#8e8f8f]">{a.subtitle}</p>
 
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Accounts" value={String(totals.accounts)} hint={`+${data.signupsLast7} in 7d`} />
         <Tile
-          label="Active (7d)"
-          value={String(data.activeLast7)}
-          hint="signed in recently"
+          label={a.tiles.accounts}
+          value={String(totals.accounts)}
+          hint={interpolate(a.tiles.accountsHint, { count: data.signupsLast7 })}
         />
-        <Tile label="Channels tracked" value={String(totals.channels)} />
+        <Tile label={a.tiles.active7d} value={String(data.activeLast7)} hint={a.tiles.active7dHint} />
+        <Tile label={a.tiles.channelsTracked} value={String(totals.channels)} />
         <Tile
-          label="Events ingested"
-          value={totals.eventsIngested.toLocaleString()}
-          hint="joins + leaves, all time"
+          label={a.tiles.eventsIngested}
+          value={totals.eventsIngested.toLocaleString(INTL_LOCALE[locale])}
+          hint={a.tiles.eventsIngestedHint}
         />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <div className="rounded-[20px] border border-[#f2eeee] bg-white p-5 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)] md:p-6">
-          <div className="text-base font-medium text-[#494949]">Activation funnel</div>
-          <p className="mt-0.5 text-xs text-[#8e8f8f]">
-            Where accounts stop. Each step is a share of total signups.
-          </p>
+          <div className="text-base font-medium text-[#494949]">{a.funnel.title}</div>
+          <p className="mt-0.5 text-xs text-[#8e8f8f]">{a.funnel.subtitle}</p>
           <div className="mt-5 flex flex-col gap-4">
-            <FunnelBar label="Signed up" count={funnel.signedUp} total={funnel.signedUp} />
+            <FunnelBar label={a.funnel.signedUp} count={funnel.signedUp} total={funnel.signedUp} />
             <FunnelBar
-              label="Connected a channel"
+              label={a.funnel.connectedChannel}
               count={funnel.connectedChannel}
               total={funnel.signedUp}
             />
             <FunnelBar
-              label="Created a campaign"
+              label={a.funnel.createdCampaign}
               count={funnel.createdCampaign}
               total={funnel.signedUp}
             />
             <FunnelBar
-              label="Got an attributed join"
+              label={a.funnel.gotAttributedJoin}
               count={funnel.gotAttributedJoin}
               total={funnel.signedUp}
             />
           </div>
-          <p className="mt-4 text-[11px] text-[#b7b7b7]">
-            The last step is the one that proves the product worked — someone joined through a
-            campaign link and got attributed.
-          </p>
+          <p className="mt-4 text-[11px] text-[#b7b7b7]">{a.funnel.footnote}</p>
         </div>
 
         <div className="rounded-[20px] border border-[#f2eeee] bg-white p-5 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)] md:p-6">
-          <div className="text-base font-medium text-[#494949]">Signups — last 30 days</div>
+          <div className="text-base font-medium text-[#494949]">{a.signups30d}</div>
           <div className="mt-2">
             <SignupsChart data={data.signupSeries} />
           </div>
@@ -134,53 +129,50 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)] md:p-6">
-        <div className="text-base font-medium text-[#494949]">Accounts</div>
-        <p className="mt-0.5 text-xs text-[#8e8f8f]">
-          Click an account with a connected channel to see their dashboard — the same growth,
-          retention and campaign view they see themselves.
-        </p>
+        <div className="text-base font-medium text-[#494949]">{a.accountsTable.title}</div>
+        <p className="mt-0.5 text-xs text-[#8e8f8f]">{a.accountsTable.subtitle}</p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-[#f2eeee] text-left text-xs text-[#8e8f8f]">
-                <th className="py-2 pr-4 font-normal">Account</th>
-                <th className="py-2 pr-4 font-normal">Signed up</th>
-                <th className="py-2 pr-4 font-normal">Last seen</th>
-                <th className="py-2 pr-4 font-normal">Channels</th>
-                <th className="py-2 pr-4 font-normal">Campaigns</th>
-                <th className="py-2 pr-4 font-normal">Joins</th>
-                <th className="py-2 pr-4 font-normal">Attributed</th>
-                <th className="py-2 pr-4 font-normal">Last event</th>
-                <th className="py-2 pr-4 font-normal">Stage</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.account}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.signedUp}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.lastSeen}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.channels}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.campaigns}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.joins}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.attributed}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.lastEvent}</th>
+                <th className="py-2 pr-4 font-normal">{a.accountsTable.stage}</th>
               </tr>
             </thead>
             <tbody>
-              {data.accounts.map((a) => {
-                const clickable = a.channelCount > 0;
-                const identity = a.telegramUsername ? `@${a.telegramUsername}` : a.email;
+              {data.accounts.map((row) => {
+                const clickable = row.channelCount > 0;
+                const identity = row.telegramUsername ? `@${row.telegramUsername}` : row.email;
                 const nameBlock = (
                   <>
                     <div className="font-medium text-[#11263c]">
-                      {a.displayName ?? identity ?? "—"}
-                      {a.isPlatformAdmin && (
+                      {row.displayName ?? identity ?? dict.common.dash}
+                      {row.isPlatformAdmin && (
                         <span className="ml-2 rounded-full bg-[#f4f2ff] px-2 py-0.5 text-[10px] font-medium text-[#3629b7]">
-                          admin
+                          {a.accountsTable.adminBadge}
                         </span>
                       )}
                     </div>
-                    {a.displayName && identity && (
+                    {row.displayName && identity && (
                       <div className="text-xs text-[#8e8f8f]">{identity}</div>
                     )}
                   </>
                 );
                 return (
                 <tr
-                  key={a.accountId}
+                  key={row.accountId}
                   className={`border-b border-[#f7f4f4] ${clickable ? "transition-colors hover:bg-[#faf9ff]" : ""}`}
                 >
                   <td className="py-3 pr-4">
                     {clickable ? (
-                      <Link href={`/admin/accounts/${a.accountId}`} className="block">
+                      <Link href={`/admin/accounts/${row.accountId}`} className="block">
                         {nameBlock}
                       </Link>
                     ) : (
@@ -188,30 +180,30 @@ export default async function AdminPage() {
                     )}
                   </td>
                   <td className="whitespace-nowrap py-3 pr-4 text-[#8e8f8f]">
-                    {new Date(a.signedUpAt).toLocaleDateString()}
+                    {new Date(row.signedUpAt).toLocaleDateString(INTL_LOCALE[locale])}
                   </td>
                   <td className="whitespace-nowrap py-3 pr-4 text-[#8e8f8f]">
-                    {relative(a.lastSignInAt)}
+                    {relative(row.lastSignInAt, a.relativeTime)}
                   </td>
                   <td className="py-3 pr-4 text-[#494949]">
-                    {a.channelCount}
-                    {a.brokenChannelCount > 0 && (
+                    {row.channelCount}
+                    {row.brokenChannelCount > 0 && (
                       <span className="ml-1 text-xs text-[#ff4267]">
-                        ({a.brokenChannelCount} broken)
+                        {interpolate(a.accountsTable.broken, { count: row.brokenChannelCount })}
                       </span>
                     )}
                   </td>
-                  <td className="py-3 pr-4 text-[#494949]">{a.campaignCount}</td>
-                  <td className="py-3 pr-4 text-[#494949]">{a.joinsTracked}</td>
-                  <td className="py-3 pr-4 text-[#494949]">{a.attributedJoins}</td>
+                  <td className="py-3 pr-4 text-[#494949]">{row.campaignCount}</td>
+                  <td className="py-3 pr-4 text-[#494949]">{row.joinsTracked}</td>
+                  <td className="py-3 pr-4 text-[#494949]">{row.attributedJoins}</td>
                   <td className="whitespace-nowrap py-3 pr-4 text-[#8e8f8f]">
-                    {relative(a.lastEventAt)}
+                    {relative(row.lastEventAt, a.relativeTime)}
                   </td>
                   <td className="py-3 pr-4">
                     <span
-                      className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STAGE_CLASS[a.stage]}`}
+                      className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${STAGE_CLASS[row.stage]}`}
                     >
-                      {STAGE_LABEL[a.stage]}
+                      {STAGE_LABEL[row.stage]}
                     </span>
                   </td>
                 </tr>
@@ -220,7 +212,7 @@ export default async function AdminPage() {
             </tbody>
           </table>
           {data.accounts.length === 0 && (
-            <p className="mt-4 text-sm text-[#8e8f8f]">No accounts yet.</p>
+            <p className="mt-4 text-sm text-[#8e8f8f]">{a.accountsTable.noAccountsYet}</p>
           )}
         </div>
       </div>

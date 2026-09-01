@@ -6,6 +6,8 @@ import { getCurrentUser, ensureAccount } from "@/lib/account";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { createChatInviteLink, describeTelegramError } from "@/lib/telegram";
 import { generateClickSlug } from "@/lib/click-tracking";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 const SOURCE_CATEGORIES = new Set(["paid_ad", "influencer", "organic", "cross_promo", "other"]);
 
@@ -56,6 +58,7 @@ export async function createCampaign(formData: FormData) {
 
   const accountId = await ensureAccount(user!.id, user!.email);
   const admin = createAdminClient();
+  const dict = await getDictionary(await getLocale());
 
   const channelId = String(formData.get("channelId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -64,7 +67,7 @@ export async function createCampaign(formData: FormData) {
   const budget = budgetRaw ? Number(budgetRaw) : null;
 
   if (!channelId || !name || !SOURCE_CATEGORIES.has(sourceCategory)) {
-    redirect("/stats?error=" + encodeURIComponent("Missing or invalid campaign fields"));
+    redirect("/stats?error=" + encodeURIComponent(dict.errors.campaign.missingFields));
   }
 
   // Ownership check: the channel must belong to this user's account.
@@ -75,7 +78,7 @@ export async function createCampaign(formData: FormData) {
     .eq("account_id", accountId)
     .single();
   if (channelError || !channel) {
-    redirect("/stats?error=" + encodeURIComponent("Channel not found"));
+    redirect("/stats?error=" + encodeURIComponent(dict.errors.campaign.channelNotFound));
   }
 
   // A Telegram-side failure here (most commonly: the bot is an admin but
@@ -85,7 +88,7 @@ export async function createCampaign(formData: FormData) {
   try {
     inviteLink = await createChatInviteLink(channel!.telegram_chat_id, name);
   } catch (err) {
-    redirect("/stats?error=" + encodeURIComponent(describeTelegramError(err)));
+    redirect("/stats?error=" + encodeURIComponent(describeTelegramError(err, dict.errors.telegramApi)));
   }
 
   const trackClicks = formData.get("trackClicks") === "on";
@@ -137,6 +140,7 @@ export async function updateCampaign(formData: FormData) {
 
   const accountId = await ensureAccount(user!.id, user!.email);
   const admin = createAdminClient();
+  const dict = await getDictionary(await getLocale());
 
   const campaignId = String(formData.get("campaignId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
@@ -144,12 +148,12 @@ export async function updateCampaign(formData: FormData) {
   const sourceCategory = String(formData.get("sourceCategory") ?? "");
 
   if (!campaignId || !name) {
-    redirect("/stats?error=" + encodeURIComponent("Campaign name cannot be empty"));
+    redirect("/stats?error=" + encodeURIComponent(dict.errors.campaign.nameEmpty));
   }
 
   const budget = budgetRaw === "" ? null : Number(budgetRaw);
   if (budget !== null && (Number.isNaN(budget) || budget < 0)) {
-    redirect("/stats?error=" + encodeURIComponent("Ad cost must be a positive number"));
+    redirect("/stats?error=" + encodeURIComponent(dict.errors.campaign.invalidAdCost));
   }
 
   const updates: Record<string, unknown> = { name, budget, ...readPlacement(formData) };

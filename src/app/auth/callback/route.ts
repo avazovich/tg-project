@@ -2,9 +2,8 @@ import { redirect } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-redirect";
-
-const FAILED =
-  "That confirmation link has expired or was already used. Sign in below, or sign up again to get a new one.";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 /**
  * Lands the click from a confirmation email and turns it into a real session.
@@ -26,6 +25,8 @@ export async function GET(request: Request) {
   const next = safeNext(searchParams.get("next"), "/dashboard");
 
   const supabase = await createClient();
+  const dict = await getDictionary(await getLocale());
+  const FAILED = dict.errors.auth.confirmationExpired;
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -39,7 +40,5 @@ export async function GET(request: Request) {
     redirect(next);
   }
 
-  redirect(
-    `/login?error=${encodeURIComponent("That confirmation link is incomplete. Try signing in, or sign up again.")}`
-  );
+  redirect(`/login?error=${encodeURIComponent(dict.errors.auth.confirmationIncomplete)}`);
 }

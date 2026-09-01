@@ -1,22 +1,13 @@
-const TOP_OPTIONS = [
-  { value: 15, label: "15 min" },
-  { value: 30, label: "30 min" },
-  { value: 60, label: "1 hour" },
-  { value: 120, label: "2 hours" },
-  { value: 180, label: "3 hours" },
-  { value: 360, label: "6 hours" },
-  { value: 720, label: "12 hours" },
-  { value: 1440, label: "24 hours" },
-];
+const TOP_VALUES = [15, 30, 60, 120, 180, 360, 720, 1440] as const;
+const FEED_VALUES = [6, 12, 24, 48, 72, 168] as const;
 
-const FEED_OPTIONS = [
-  { value: 6, label: "6 hours" },
-  { value: 12, label: "12 hours" },
-  { value: 24, label: "24 hours" },
-  { value: 48, label: "48 hours" },
-  { value: 72, label: "3 days" },
-  { value: 168, label: "1 week" },
-];
+type PlacementFieldsText = {
+  postGoesLive: string;
+  topSlot: string;
+  inFeed: string;
+  topOptions: Record<string, string>;
+  feedOptions: Record<string, string>;
+};
 
 const inputClass =
   "mt-1 block rounded-[12px] border border-[#e7e7e7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3629b7]";
@@ -35,17 +26,19 @@ export default function PlacementFields({
   promoStartsAt = null,
   topMinutes = null,
   feedHours = null,
+  t,
 }: {
   idPrefix: string;
   promoStartsAt?: string | null;
   topMinutes?: number | null;
   feedHours?: number | null;
+  t: PlacementFieldsText;
 }) {
   return (
     <>
       <div>
         <label className="text-xs text-[#8e8f8f]" htmlFor={`${idPrefix}-promoStartsAt`}>
-          Post goes live
+          {t.postGoesLive}
         </label>
         <input
           id={`${idPrefix}-promoStartsAt`}
@@ -57,7 +50,7 @@ export default function PlacementFields({
       </div>
       <div>
         <label className="text-xs text-[#8e8f8f]" htmlFor={`${idPrefix}-topMinutes`}>
-          Top slot
+          {t.topSlot}
         </label>
         <select
           id={`${idPrefix}-topMinutes`}
@@ -65,16 +58,16 @@ export default function PlacementFields({
           defaultValue={topMinutes ?? 60}
           className={inputClass}
         >
-          {TOP_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
+          {TOP_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {t.topOptions[String(value)]}
             </option>
           ))}
         </select>
       </div>
       <div>
         <label className="text-xs text-[#8e8f8f]" htmlFor={`${idPrefix}-feedHours`}>
-          In feed
+          {t.inFeed}
         </label>
         <select
           id={`${idPrefix}-feedHours`}
@@ -82,9 +75,9 @@ export default function PlacementFields({
           defaultValue={feedHours ?? 24}
           className={inputClass}
         >
-          {FEED_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
+          {FEED_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {t.feedOptions[String(value)]}
             </option>
           ))}
         </select>

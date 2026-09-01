@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser, ensureAccount } from "@/lib/account";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
 
 const ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -23,10 +25,12 @@ export async function updateProfile(formData: FormData) {
 
   if (avatar instanceof File && avatar.size > 0) {
     if (!ALLOWED_TYPES.has(avatar.type)) {
-      redirect("/profile?error=" + encodeURIComponent("Use a PNG, JPEG, or WebP image"));
+      const dict = await getDictionary(await getLocale());
+      redirect("/profile?error=" + encodeURIComponent(dict.errors.profile.badImageType));
     }
     if (avatar.size > MAX_BYTES) {
-      redirect("/profile?error=" + encodeURIComponent("Image must be under 5MB"));
+      const dict = await getDictionary(await getLocale());
+      redirect("/profile?error=" + encodeURIComponent(dict.errors.profile.imageTooLarge));
     }
 
     const ext = avatar.type.split("/")[1];

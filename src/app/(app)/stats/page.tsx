@@ -5,15 +5,13 @@ import { trackedLinkUrl } from "@/lib/click-tracking";
 import CopyLinkButton from "@/components/CopyLinkButton";
 import PlacementFields from "@/components/PlacementFields";
 import PlacementPerformance from "@/components/PlacementPerformance";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
+import { INTL_LOCALE } from "@/i18n/config";
+import { t as interpolate } from "@/i18n/interpolate";
+import type { Dictionary } from "@/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
-
-const QUALITY_LABEL: Record<QualityBand, string> = {
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-  unknown: "—",
-};
 
 const QUALITY_CLASS: Record<QualityBand, string> = {
   high: "bg-[#edffef] text-[#55a55e]",
@@ -22,20 +20,12 @@ const QUALITY_CLASS: Record<QualityBand, string> = {
   unknown: "bg-[#f2eeee] text-[#8e8f8f]",
 };
 
-const SOURCE_OPTIONS = [
-  { value: "paid_ad", label: "Paid ad" },
-  { value: "influencer", label: "Influencer" },
-  { value: "organic", label: "Organic" },
-  { value: "cross_promo", label: "Cross-promo" },
-  { value: "other", label: "Other" },
-];
-
 function pct(v: number | null) {
   return v === null ? "—" : `${v.toFixed(0)}%`;
 }
 
-function money(v: number | null) {
-  return v === null ? "—" : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+function money(v: number | null, intlLocale: string) {
+  return v === null ? "—" : v.toLocaleString(intlLocale, { maximumFractionDigits: 2 });
 }
 
 const inputClass =
@@ -70,6 +60,17 @@ export default async function StatsPage({
   const { activeChannel } = await requireOnboardedAccount();
   const data = await loadDashboardData(activeChannel.id);
   const { edit: editId, error } = await searchParams;
+  const locale = await getLocale();
+  const dict = await getDictionary(locale);
+  const intlLocale = INTL_LOCALE[locale];
+  const s = dict.stats;
+  const SOURCE_OPTIONS: { value: keyof Dictionary["stats"]["sourceOptions"]; label: string }[] = [
+    { value: "paid_ad", label: s.sourceOptions.paid_ad },
+    { value: "influencer", label: s.sourceOptions.influencer },
+    { value: "organic", label: s.sourceOptions.organic },
+    { value: "cross_promo", label: s.sourceOptions.cross_promo },
+    { value: "other", label: s.sourceOptions.other },
+  ];
 
   const ranked = [...data.campaigns].sort(
     (a, b) =>
@@ -78,9 +79,9 @@ export default async function StatsPage({
 
   return (
     <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
-      <h1 className="text-2xl text-[#3629b7] font-semibold">Stats</h1>
+      <h1 className="text-2xl text-[#3629b7] font-semibold">{s.title}</h1>
       <p className="mt-1 text-sm text-[#8e8f8f]">
-        {activeChannel.name} — campaign performance, ranked by retention.
+        {interpolate(s.subtitle, { channel: activeChannel.name })}
       </p>
 
       {error && (
@@ -90,29 +91,31 @@ export default async function StatsPage({
       )}
 
       <div className="mt-8 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
-        <div className="text-base font-medium text-[#494949]">Spend efficiency</div>
-        <p className="mt-0.5 text-xs text-[#8e8f8f]">
-          Blended across campaigns that have an ad cost set.
-        </p>
+        <div className="text-base font-medium text-[#494949]">{s.spendEfficiency}</div>
+        <p className="mt-0.5 text-xs text-[#8e8f8f]">{s.spendEfficiencyNote}</p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <SummaryTile label="Total ad spend" value={money(data.totalSpend || null)} />
+          <SummaryTile label={s.totalAdSpend} value={money(data.totalSpend || null, intlLocale)} />
           <SummaryTile
-            label="CAC"
-            value={money(data.blendedCac)}
-            hint="per subscriber acquired"
+            label={s.cac}
+            value={money(data.blendedCac, intlLocale)}
+            hint={s.perSubscriberAcquired}
           />
           <SummaryTile
-            label="Cost per retained"
-            value={money(data.blendedCostPerRetained)}
-            hint="per subscriber still here"
+            label={s.costPerRetained}
+            value={money(data.blendedCostPerRetained, intlLocale)}
+            hint={s.perSubscriberStillHere}
           />
           <SummaryTile
-            label="Cost per click"
-            value={money(data.blendedCpc)}
-            hint={data.paidClicks > 0 ? `${data.paidClicks} tracked clicks` : "no tracked links yet"}
+            label={s.costPerClick}
+            value={money(data.blendedCpc, intlLocale)}
+            hint={
+              data.paidClicks > 0
+                ? interpolate(s.trackedClicksN, { count: data.paidClicks })
+                : s.noTrackedLinksYet
+            }
           />
           <SummaryTile
-            label="Paid vs organic joins"
+            label={s.paidVsOrganicJoins}
             value={`${data.paidJoined} / ${data.organicJoined}`}
           />
         </div>
@@ -123,23 +126,23 @@ export default async function StatsPage({
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="text-left text-xs text-[#8e8f8f] border-b border-[#f2eeee]">
-                <th className="py-2 pr-4 font-normal">Campaign</th>
-                <th className="py-2 pr-4 font-normal">Source</th>
-                <th className="py-2 pr-4 font-normal">Ad cost</th>
-                <th className="py-2 pr-4 font-normal">Clicks</th>
-                <th className="py-2 pr-4 font-normal">Click→Join</th>
-                <th className="py-2 pr-4 font-normal">Joined</th>
-                <th className="py-2 pr-4 font-normal">Active</th>
-                <th className="py-2 pr-4 font-normal">Churn</th>
-                <th className="py-2 pr-4 font-normal">CAC</th>
-                <th className="py-2 pr-4 font-normal">CPC</th>
-                <th className="py-2 pr-4 font-normal">Cost/ret.</th>
-                <th className="py-2 pr-4 font-normal">1d</th>
-                <th className="py-2 pr-4 font-normal">7d</th>
-                <th className="py-2 pr-4 font-normal">30d</th>
-                <th className="py-2 pr-4 font-normal">90d</th>
-                <th className="py-2 pr-4 font-normal">Quality</th>
-                <th className="py-2 pr-4 font-normal">Actions</th>
+                <th className="py-2 pr-4 font-normal">{s.table.campaign}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.source}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.adCost}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.clicks}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.clickToJoin}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.joined}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.active}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.churn}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.cac}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.cpc}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.costPerRet}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.d1}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.d7}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.d30}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.d90}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.quality}</th>
+                <th className="py-2 pr-4 font-normal">{s.table.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -154,7 +157,7 @@ export default async function StatsPage({
                         <input type="hidden" name="campaignId" value={c.id} />
                         <div>
                           <label className="text-xs text-[#8e8f8f]" htmlFor={`name-${c.id}`}>
-                            Campaign name
+                            {s.editForm.campaignName}
                           </label>
                           <input
                             id={`name-${c.id}`}
@@ -166,7 +169,7 @@ export default async function StatsPage({
                         </div>
                         <div>
                           <label className="text-xs text-[#8e8f8f]" htmlFor={`source-${c.id}`}>
-                            Source
+                            {s.editForm.source}
                           </label>
                           <select
                             id={`source-${c.id}`}
@@ -183,7 +186,7 @@ export default async function StatsPage({
                         </div>
                         <div>
                           <label className="text-xs text-[#8e8f8f]" htmlFor={`budget-${c.id}`}>
-                            Ad cost
+                            {s.editForm.adCost}
                           </label>
                           <input
                             id={`budget-${c.id}`}
@@ -192,7 +195,7 @@ export default async function StatsPage({
                             step="0.01"
                             min="0"
                             defaultValue={c.budget ?? ""}
-                            placeholder="not set"
+                            placeholder={s.editForm.notSet}
                             className={`${inputClass} w-32`}
                           />
                         </div>
@@ -201,24 +204,25 @@ export default async function StatsPage({
                           promoStartsAt={c.promoStartsAt}
                           topMinutes={c.topMinutes}
                           feedHours={c.feedHours}
+                          t={dict.placementFields}
                         />
                         {!c.clickSlug && (
                           <label className="flex items-center gap-2 pb-2 text-xs text-[#8e8f8f]">
                             <input type="checkbox" name="trackClicks" />
-                            Turn on click tracking
+                            {s.editForm.turnOnClickTracking}
                           </label>
                         )}
                         <button
                           type="submit"
                           className="rounded-[12px] bg-[#3629b7] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2296]"
                         >
-                          Save
+                          {s.editForm.save}
                         </button>
                         <a
                           href="/stats"
                           className="rounded-[12px] border border-[#e7e7e7] px-4 py-2 text-sm text-[#494949] hover:bg-[#f7f4f4]"
                         >
-                          Cancel
+                          {s.editForm.cancel}
                         </a>
                       </form>
                     </td>
@@ -240,16 +244,20 @@ export default async function StatsPage({
                               >
                                 {displayUrl.replace("https://", "")}
                               </a>
-                              <CopyLinkButton url={displayUrl} />
+                              <CopyLinkButton
+                                url={displayUrl}
+                                copyLabel={dict.copyLinkButton.copy}
+                                copiedLabel={dict.copyLinkButton.copied}
+                              />
                             </div>
                           )
                         );
                       })()}
                     </td>
                     <td className="py-3 pr-4 text-[#8e8f8f] whitespace-nowrap">
-                      {c.sourceCategory}
+                      {s.sourceOptions[c.sourceCategory as keyof typeof s.sourceOptions] ?? c.sourceCategory}
                     </td>
-                    <td className="py-3 pr-4 text-[#494949]">{money(c.budget)}</td>
+                    <td className="py-3 pr-4 text-[#494949]">{money(c.budget, intlLocale)}</td>
                     <td className="py-3 pr-4 text-[#494949]">
                       {c.clickSlug ? c.clicks : <span className="text-[#b7b7b7]">—</span>}
                     </td>
@@ -262,11 +270,11 @@ export default async function StatsPage({
                       {pct(c.churnRate)}
                       {c.churned > 0 && <span className="text-[#b7b7b7]"> ({c.churned})</span>}
                     </td>
-                    <td className="py-3 pr-4 text-[#494949]">{money(c.cac)}</td>
+                    <td className="py-3 pr-4 text-[#494949]">{money(c.cac, intlLocale)}</td>
                     <td className="py-3 pr-4 text-[#494949]">
-                      {c.clickSlug ? money(c.costPerClick) : <span className="text-[#b7b7b7]">—</span>}
+                      {c.clickSlug ? money(c.costPerClick, intlLocale) : <span className="text-[#b7b7b7]">—</span>}
                     </td>
-                    <td className="py-3 pr-4 text-[#494949]">{money(c.costPerRetained)}</td>
+                    <td className="py-3 pr-4 text-[#494949]">{money(c.costPerRetained, intlLocale)}</td>
                     <RetentionCell r={c.retention1} />
                     <RetentionCell r={c.retention7} />
                     <RetentionCell r={c.retention30} />
@@ -275,7 +283,7 @@ export default async function StatsPage({
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${QUALITY_CLASS[c.quality]}`}
                       >
-                        {QUALITY_LABEL[c.quality]}
+                        {s.quality[c.quality]}
                       </span>
                     </td>
                     <td className="py-3 pr-4 whitespace-nowrap">
@@ -284,7 +292,7 @@ export default async function StatsPage({
                           href={`/stats?edit=${c.id}`}
                           className="text-[#3629b7] hover:underline"
                         >
-                          edit
+                          {s.row.edit}
                         </a>
                         <form action={setCampaignStatus} className="flex items-center gap-2">
                           <input type="hidden" name="campaignId" value={c.id} />
@@ -294,7 +302,7 @@ export default async function StatsPage({
                               value="paused"
                               className="text-[#8e8f8f] hover:text-[#3629b7] hover:underline"
                             >
-                              pause
+                              {s.row.pause}
                             </button>
                           )}
                           {c.status !== "active" && (
@@ -303,7 +311,7 @@ export default async function StatsPage({
                               value="active"
                               className="text-[#8e8f8f] hover:text-[#3629b7] hover:underline"
                             >
-                              activate
+                              {s.row.activate}
                             </button>
                           )}
                           {c.status !== "archived" && (
@@ -312,7 +320,7 @@ export default async function StatsPage({
                               value="archived"
                               className="text-[#8e8f8f] hover:text-[#3629b7] hover:underline"
                             >
-                              archive
+                              {s.row.archive}
                             </button>
                           )}
                         </form>
@@ -324,41 +332,40 @@ export default async function StatsPage({
             </tbody>
           </table>
           {data.campaigns.length === 0 && (
-            <p className="mt-4 text-sm text-[#8e8f8f]">No campaigns yet.</p>
+            <p className="mt-4 text-sm text-[#8e8f8f]">{s.noCampaignsYet}</p>
           )}
           {data.organicJoined > 0 && (
             <p className="mt-4 text-xs text-[#8e8f8f]">
-              + {data.organicJoined} organic joins with no invite link attached.
+              {interpolate(s.organicJoinsNote, { count: data.organicJoined })}
             </p>
           )}
-          <p className="mt-3 text-[11px] text-[#b7b7b7]">
-            Retention columns show the % of joins still subscribed after that many days, with the
-            number of joins old enough to count in parentheses. CAC = ad cost ÷ joined.
-          </p>
+          <p className="mt-3 text-[11px] text-[#b7b7b7]">{s.retentionNote}</p>
         </div>
       </div>
 
       <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
-        <div className="text-base font-medium text-[#494949]">Placement performance</div>
-        <p className="mt-0.5 text-xs text-[#8e8f8f]">
-          How joins landed across the paid window — was the top slot worth its premium?
-        </p>
-        <PlacementPerformance campaigns={data.campaigns} />
+        <div className="text-base font-medium text-[#494949]">{s.placementPerformance}</div>
+        <p className="mt-0.5 text-xs text-[#8e8f8f]">{s.placementPerformanceNote}</p>
+        <PlacementPerformance
+          campaigns={data.campaigns}
+          t={dict.placementPerformance}
+          intlLocale={intlLocale}
+        />
       </div>
 
       <div className="mt-6 rounded-[20px] border border-[#f2eeee] bg-white p-5 md:p-6 shadow-[0_20px_40px_0_rgba(0,0,0,0.03)]">
-        <div className="text-base font-medium text-[#494949]">New campaign</div>
+        <div className="text-base font-medium text-[#494949]">{s.newCampaign}</div>
         <form action={createCampaign} className="mt-4 flex flex-wrap items-end gap-3 text-sm">
           <input type="hidden" name="channelId" value={activeChannel.id} />
           <div>
             <label className="text-xs text-[#8e8f8f]" htmlFor="name">
-              Name
+              {s.newForm.name}
             </label>
             <input id="name" name="name" required className={inputClass} />
           </div>
           <div>
             <label className="text-xs text-[#8e8f8f]" htmlFor="sourceCategory">
-              Source
+              {s.newForm.source}
             </label>
             <select id="sourceCategory" name="sourceCategory" className={inputClass}>
               {SOURCE_OPTIONS.map((o) => (
@@ -370,7 +377,7 @@ export default async function StatsPage({
           </div>
           <div>
             <label className="text-xs text-[#8e8f8f]" htmlFor="budget">
-              Ad cost (optional)
+              {s.newForm.adCostOptional}
             </label>
             <input
               id="budget"
@@ -381,16 +388,16 @@ export default async function StatsPage({
               className={`${inputClass} w-32`}
             />
           </div>
-          <PlacementFields idPrefix="new" />
+          <PlacementFields idPrefix="new" t={dict.placementFields} />
           <label className="flex items-center gap-2 pb-2 text-xs text-[#8e8f8f]">
             <input type="checkbox" name="trackClicks" />
-            Track clicks + subs on this link
+            {s.newForm.trackClicks}
           </label>
           <button
             type="submit"
             className="rounded-[12px] bg-[#3629b7] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2296]"
           >
-            Create + generate invite link
+            {s.newForm.submit}
           </button>
         </form>
       </div>

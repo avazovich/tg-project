@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Wordmark from "./Wordmark";
 import ChannelSwitcher from "./ChannelSwitcher";
+import LanguageSwitcher from "./LanguageSwitcher";
 import type { Channel } from "@/lib/account";
+import type { Locale } from "@/i18n/config";
 
 function DashboardIcon() {
   return (
@@ -55,11 +57,19 @@ function AdminIcon() {
   );
 }
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", Icon: DashboardIcon },
-  { href: "/stats", label: "Stats", Icon: StatsIcon },
-  { href: "/settings", label: "Settings", Icon: SettingsIcon },
-];
+type SidebarText = {
+  menu: string;
+  dashboard: string;
+  stats: string;
+  settings: string;
+  admin: string;
+  viewProfile: string;
+  openMenu: string;
+  closeMenu: string;
+  tracking: string;
+  onlyOneChannel: string;
+  connectAnother: string;
+};
 
 type Props = {
   identityLabel: string;
@@ -68,6 +78,9 @@ type Props = {
   channels: Channel[];
   activeChannelId: string;
   isPlatformAdmin: boolean;
+  t: SidebarText;
+  languageLabel: string;
+  locale: Locale;
 };
 
 function SidebarBody({
@@ -77,26 +90,43 @@ function SidebarBody({
   channels,
   activeChannelId,
   isPlatformAdmin,
+  t,
+  languageLabel,
+  locale,
   onNavigate,
 }: Props & { onNavigate?: () => void }) {
   const pathname = usePathname();
   const name = displayName || identityLabel;
+  const NAV_ITEMS = [
+    { href: "/dashboard", label: t.dashboard, Icon: DashboardIcon },
+    { href: "/stats", label: t.stats, Icon: StatsIcon },
+    { href: "/settings", label: t.settings, Icon: SettingsIcon },
+  ];
   // Hiding the link is cosmetic; /admin enforces access server-side.
   const navItems = isPlatformAdmin
-    ? [...NAV_ITEMS, { href: "/admin", label: "Admin", Icon: AdminIcon }]
+    ? [...NAV_ITEMS, { href: "/admin", label: t.admin, Icon: AdminIcon }]
     : NAV_ITEMS;
 
   return (
     <>
       <div>
         <Wordmark size="md" />
+        <div className="mt-3">
+          <LanguageSwitcher active={locale} label={languageLabel} />
+        </div>
 
         <div className="mt-7">
-          <ChannelSwitcher channels={channels} activeChannelId={activeChannelId} />
+          <ChannelSwitcher
+            channels={channels}
+            activeChannelId={activeChannelId}
+            tracking={t.tracking}
+            onlyOneChannel={t.onlyOneChannel}
+            connectAnother={t.connectAnother}
+          />
         </div>
 
         <nav className="mt-10">
-          <div className="text-sm text-[#3629b7]">Menu</div>
+          <div className="text-sm text-[#3629b7]">{t.menu}</div>
           <div className="mt-[30px] flex flex-col gap-[30px]">
             {navItems.map(({ href, label, Icon }) => {
               const active = pathname === href;
@@ -138,7 +168,7 @@ function SidebarBody({
         )}
         <div className="min-w-0">
           <p className="truncate text-sm text-[#494949] group-hover:text-[#3629b7]">{name}</p>
-          <p className="text-xs text-[#8e8f8f]">View profile</p>
+          <p className="text-xs text-[#8e8f8f]">{t.viewProfile}</p>
         </div>
       </Link>
     </>
@@ -156,7 +186,7 @@ export default function Sidebar(props: Props) {
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
+          aria-label={props.t.openMenu}
           className="rounded-[10px] p-2 text-[#494949] hover:bg-[#f7f4f4]"
         >
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -174,7 +204,7 @@ export default function Sidebar(props: Props) {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
-            aria-label="Close menu"
+            aria-label={props.t.closeMenu}
             onClick={() => setMobileOpen(false)}
             className="animate-fade-in absolute inset-0 bg-black/25"
           />

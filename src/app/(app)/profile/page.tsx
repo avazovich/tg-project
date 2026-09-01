@@ -2,6 +2,9 @@ import Image from "next/image";
 import { requireOnboardedAccount } from "@/lib/account";
 import { signOut } from "@/app/login/actions";
 import { updateProfile } from "./actions";
+import { getLocale } from "@/i18n/get-locale";
+import { getDictionary } from "@/i18n/dictionary";
+import { t as interpolate } from "@/i18n/interpolate";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +16,13 @@ export default async function ProfilePage({
   const { displayName, avatarUrl, identityLabel, telegramUsername } = await requireOnboardedAccount();
   const { error } = await searchParams;
   const name = displayName || identityLabel;
+  const dict = await getDictionary(await getLocale());
+  const d = dict.profile;
 
   return (
     <main className="w-full px-5 py-8 md:px-[68px] md:py-[58px]">
-      <h1 className="text-2xl font-semibold text-[#3629b7]">Profile</h1>
-      <p className="mt-1 text-sm text-[#8e8f8f]">How you appear inside Foydami.</p>
+      <h1 className="text-2xl font-semibold text-[#3629b7]">{d.title}</h1>
+      <p className="mt-1 text-sm text-[#8e8f8f]">{d.subtitle}</p>
 
       {error && (
         <p className="mt-4 max-w-2xl rounded-[12px] border border-[#ffd9c4] bg-[#fff2ec] px-3 py-2 text-sm text-[#ff4267]">
@@ -42,7 +47,7 @@ export default async function ProfilePage({
           )}
           <div className="min-w-0 flex-1">
             <label className="text-xs text-[#8e8f8f]" htmlFor="displayName">
-              Display name
+              {d.displayName}
             </label>
             <input
               id="displayName"
@@ -52,7 +57,7 @@ export default async function ProfilePage({
               className="mt-1 block w-full rounded-[12px] border border-[#e7e7e7] bg-white px-3 py-2 text-sm outline-none focus:border-[#3629b7]"
             />
             <label className="mt-3 block text-xs text-[#8e8f8f]" htmlFor="avatar">
-              Photo (PNG, JPEG, or WebP, under 5MB)
+              {d.photo}
             </label>
             <input
               id="avatar"
@@ -65,29 +70,27 @@ export default async function ProfilePage({
               type="submit"
               className="mt-3 rounded-[12px] bg-[#3629b7] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2296]"
             >
-              Save
+              {d.save}
             </button>
           </div>
         </form>
 
         <div className="mt-6 border-t border-[#f2eeee] pt-4 text-sm">
           <div className="flex flex-wrap justify-between gap-2 py-2">
-            <span className="text-[#8e8f8f]">Signed in with</span>
+            <span className="text-[#8e8f8f]">{d.signedInWith}</span>
             <span className="font-medium text-[#11263c]">
-              {telegramUsername ? `Telegram (${identityLabel})` : `Email (${identityLabel})`}
+              {telegramUsername
+                ? interpolate(d.signedInWithTelegram, { identity: identityLabel })
+                : interpolate(d.signedInWithEmail, { identity: identityLabel })}
             </span>
           </div>
-          <p className="text-xs text-[#b7b7b7]">
-            {telegramUsername
-              ? "Your Telegram account is tied to your login and can't be changed here."
-              : "Your email is tied to your login and can't be changed here."}
-          </p>
+          <p className="text-xs text-[#b7b7b7]">{telegramUsername ? d.telegramNote : d.emailNote}</p>
         </div>
       </div>
 
       <form action={signOut} className="mt-6">
         <button className="rounded-[12px] border border-[#e7e7e7] px-4 py-2 text-sm text-[#494949] hover:bg-[#f7f4f4]">
-          Sign out
+          {d.signOut}
         </button>
       </form>
     </main>
