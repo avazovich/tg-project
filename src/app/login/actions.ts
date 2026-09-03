@@ -146,8 +146,24 @@ export async function verifyTelegramCode(formData: FormData) {
     redirect(`/login/telegram?error=${encodeURIComponent(GENERIC_ERROR)}`);
   }
 
-  const next = existingAccount ? "/dashboard" : "/onboarding";
-  redirect(
-    `/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=magiclink&next=${encodeURIComponent(next)}`
-  );
+  // Redeem the token right here rather than redirecting to /auth/callback:
+  // Next.js performs a *client-side* navigation for a Server Action's
+  // redirect() when JS is available, and that doesn't reliably carry
+  // through as a real browser navigation when the target is a Route
+  // Handler (not a page) that itself redirects again — the second
+  // redirect's Set-Cookie never lands, so the user bounces back to /login
+  // with a freshly-created account but no session. Using the
+  // cookie-writing client directly here means this is a Server Action
+  // setting cookies on its own response, then doing exactly one redirect
+  // to a real page — the well-trodden path.
+  const supabase = await createServerClient();
+  const { error: verifyErr } = await supabase.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: hashedToken,
+  });
+  if (verifyErr) {
+    redirect(`/login/telegram?error=${encodeURIComponent(GENERIC_ERROR)}`);
+  }
+
+  redirect(existingAccount ? "/dashboard" : "/onboarding");
 }
